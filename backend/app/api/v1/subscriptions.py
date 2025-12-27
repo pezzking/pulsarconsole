@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import AuditSvc, RequestInfo, SubscriptionSvc
+from app.api.deps import AuditSvc, CurrentApprovedUser, RequestInfo, SubscriptionSvc
 from app.models.audit import ActionType, ResourceType
 from app.schemas import (
     ExpireMessagesRequest,
@@ -27,6 +27,7 @@ async def list_subscriptions(
     tenant: str,
     namespace: str,
     topic: str,
+    _user: CurrentApprovedUser,
     service: SubscriptionSvc,
     persistent: bool = Query(default=True, description="Persistent topic"),
     use_cache: bool = Query(default=True, description="Use cached data"),
@@ -47,6 +48,7 @@ async def get_subscription(
     namespace: str,
     topic: str,
     subscription: str,
+    _user: CurrentApprovedUser,
     service: SubscriptionSvc,
     persistent: bool = Query(default=True, description="Persistent topic"),
 ) -> SubscriptionDetailResponse:
@@ -63,6 +65,7 @@ async def create_subscription(
     namespace: str,
     topic: str,
     data: SubscriptionCreate,
+    _user: CurrentApprovedUser,
     service: SubscriptionSvc,
     audit: AuditSvc,
     request_info: RequestInfo,
@@ -100,6 +103,7 @@ async def delete_subscription(
     namespace: str,
     topic: str,
     subscription: str,
+    _user: CurrentApprovedUser,
     service: SubscriptionSvc,
     audit: AuditSvc,
     request_info: RequestInfo,
@@ -130,6 +134,7 @@ async def skip_messages(
     topic: str,
     subscription: str,
     data: SkipMessagesRequest,
+    _user: CurrentApprovedUser,
     service: SubscriptionSvc,
     audit: AuditSvc,
     request_info: RequestInfo,
@@ -159,6 +164,7 @@ async def skip_all_messages(
     namespace: str,
     topic: str,
     subscription: str,
+    _user: CurrentApprovedUser,
     service: SubscriptionSvc,
     audit: AuditSvc,
     request_info: RequestInfo,
@@ -189,6 +195,7 @@ async def reset_cursor(
     topic: str,
     subscription: str,
     data: ResetCursorRequest,
+    _user: CurrentApprovedUser,
     service: SubscriptionSvc,
     audit: AuditSvc,
     request_info: RequestInfo,
@@ -219,6 +226,7 @@ async def reset_cursor_to_message_id(
     topic: str,
     subscription: str,
     data: ResetCursorToMessageIdRequest,
+    _user: CurrentApprovedUser,
     service: SubscriptionSvc,
     audit: AuditSvc,
     request_info: RequestInfo,
@@ -249,6 +257,7 @@ async def expire_messages(
     topic: str,
     subscription: str,
     data: ExpireMessagesRequest,
+    _user: CurrentApprovedUser,
     service: SubscriptionSvc,
     audit: AuditSvc,
     request_info: RequestInfo,

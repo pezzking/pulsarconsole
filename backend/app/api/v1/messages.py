@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import MessageBrowserSvc, SessionId
+from app.api.deps import CurrentApprovedUser, MessageBrowserSvc, SessionId
 from app.schemas import (
     BrowseMessagesRequest,
     BrowseMessagesResponse,
@@ -27,6 +27,7 @@ async def browse_messages(
     namespace: str,
     topic: str,
     subscription: str,
+    _user: CurrentApprovedUser,
     session_id: SessionId,
     service: MessageBrowserSvc,
     data: BrowseMessagesRequest | None = None,
@@ -55,6 +56,7 @@ async def examine_messages(
     tenant: str,
     namespace: str,
     topic: str,
+    _user: CurrentApprovedUser,
     session_id: SessionId,
     service: MessageBrowserSvc,
     data: ExamineMessagesRequest | None = None,
@@ -83,6 +85,7 @@ async def get_message(
     namespace: str,
     topic: str,
     message_id: str,
+    _user: CurrentApprovedUser,
     session_id: SessionId,
     service: MessageBrowserSvc,
     persistent: bool = Query(default=True, description="Persistent topic"),
@@ -105,6 +108,7 @@ async def get_last_message_id(
     tenant: str,
     namespace: str,
     topic: str,
+    _user: CurrentApprovedUser,
     service: MessageBrowserSvc,
     persistent: bool = Query(default=True, description="Persistent topic"),
 ) -> LastMessageIdResponse:

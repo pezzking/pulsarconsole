@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import AuditSvc, RequestInfo, TopicSvc
+from app.api.deps import AuditSvc, CurrentApprovedUser, RequestInfo, TopicSvc
 from app.models.audit import ResourceType
 from app.schemas import (
     SuccessResponse,
@@ -23,6 +23,7 @@ router = APIRouter(
 async def list_topics(
     tenant: str,
     namespace: str,
+    _user: CurrentApprovedUser,
     service: TopicSvc,
     persistent: bool = Query(default=True, description="List persistent topics"),
     use_cache: bool = Query(default=True, description="Use cached data"),
@@ -42,6 +43,7 @@ async def get_topic(
     tenant: str,
     namespace: str,
     topic: str,
+    _user: CurrentApprovedUser,
     service: TopicSvc,
     persistent: bool = Query(default=True, description="Persistent topic"),
 ) -> TopicDetailResponse:
@@ -55,6 +57,7 @@ async def create_topic(
     tenant: str,
     namespace: str,
     data: TopicCreate,
+    _user: CurrentApprovedUser,
     service: TopicSvc,
     audit: AuditSvc,
     request_info: RequestInfo,
@@ -85,6 +88,7 @@ async def delete_topic(
     tenant: str,
     namespace: str,
     topic: str,
+    _user: CurrentApprovedUser,
     service: TopicSvc,
     audit: AuditSvc,
     request_info: RequestInfo,
@@ -116,6 +120,7 @@ async def get_topic_partitions(
     tenant: str,
     namespace: str,
     topic: str,
+    _user: CurrentApprovedUser,
     service: TopicSvc,
     persistent: bool = Query(default=True, description="Persistent topic"),
 ) -> dict:
@@ -132,6 +137,7 @@ async def update_topic_partitions(
     namespace: str,
     topic: str,
     data: TopicPartitionUpdate,
+    _user: CurrentApprovedUser,
     service: TopicSvc,
     audit: AuditSvc,
     request_info: RequestInfo,
@@ -159,6 +165,7 @@ async def unload_topic(
     tenant: str,
     namespace: str,
     topic: str,
+    _user: CurrentApprovedUser,
     service: TopicSvc,
     persistent: bool = Query(default=True, description="Persistent topic"),
 ) -> SuccessResponse:
@@ -172,6 +179,7 @@ async def compact_topic(
     tenant: str,
     namespace: str,
     topic: str,
+    _user: CurrentApprovedUser,
     service: TopicSvc,
     persistent: bool = Query(default=True, description="Persistent topic"),
 ) -> SuccessResponse:
@@ -185,6 +193,7 @@ async def offload_topic(
     tenant: str,
     namespace: str,
     topic: str,
+    _user: CurrentApprovedUser,
     service: TopicSvc,
     persistent: bool = Query(default=True, description="Persistent topic"),
 ) -> SuccessResponse:

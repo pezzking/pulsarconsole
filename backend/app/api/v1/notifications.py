@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import NotificationSvc
+from app.api.deps import CurrentApprovedUser, NotificationSvc
 from app.models.notification import NotificationType, NotificationSeverity
 from app.schemas import (
     CreateNotificationRequest,
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 @router.get("", response_model=NotificationListResponse)
 async def list_notifications(
+    _user: CurrentApprovedUser,
     service: NotificationSvc,
     type: str | None = Query(default=None, description="Filter by type"),
     severity: str | None = Query(default=None, description="Filter by severity"),
@@ -62,7 +63,7 @@ async def list_notifications(
 
 
 @router.get("/count", response_model=NotificationCountResponse)
-async def get_unread_count(service: NotificationSvc) -> NotificationCountResponse:
+async def get_unread_count(_user: CurrentApprovedUser, service: NotificationSvc) -> NotificationCountResponse:
     """Get count of unread notifications."""
     count = await service.get_unread_count()
     return NotificationCountResponse(unread_count=count)
@@ -71,6 +72,7 @@ async def get_unread_count(service: NotificationSvc) -> NotificationCountRespons
 @router.get("/{notification_id}", response_model=NotificationResponse | None)
 async def get_notification(
     notification_id: UUID,
+    _user: CurrentApprovedUser,
     service: NotificationSvc,
 ) -> NotificationResponse | None:
     """Get a specific notification."""
@@ -96,6 +98,7 @@ async def get_notification(
 @router.post("/{notification_id}/read", response_model=SuccessResponse)
 async def mark_as_read(
     notification_id: UUID,
+    _user: CurrentApprovedUser,
     service: NotificationSvc,
 ) -> SuccessResponse:
     """Mark a notification as read."""
@@ -106,7 +109,7 @@ async def mark_as_read(
 
 
 @router.post("/read-all", response_model=SuccessResponse)
-async def mark_all_as_read(service: NotificationSvc) -> SuccessResponse:
+async def mark_all_as_read(_user: CurrentApprovedUser, service: NotificationSvc) -> SuccessResponse:
     """Mark all notifications as read."""
     count = await service.mark_all_as_read()
     return SuccessResponse(message=f"Marked {count} notifications as read")
@@ -115,6 +118,7 @@ async def mark_all_as_read(service: NotificationSvc) -> SuccessResponse:
 @router.post("/{notification_id}/dismiss", response_model=SuccessResponse)
 async def dismiss_notification(
     notification_id: UUID,
+    _user: CurrentApprovedUser,
     service: NotificationSvc,
 ) -> SuccessResponse:
     """Dismiss a notification."""
@@ -125,7 +129,7 @@ async def dismiss_notification(
 
 
 @router.post("/dismiss-all", response_model=SuccessResponse)
-async def dismiss_all_notifications(service: NotificationSvc) -> SuccessResponse:
+async def dismiss_all_notifications(_user: CurrentApprovedUser, service: NotificationSvc) -> SuccessResponse:
     """Dismiss all notifications."""
     count = await service.dismiss_all()
     return SuccessResponse(message=f"Dismissed {count} notifications")
@@ -134,6 +138,7 @@ async def dismiss_all_notifications(service: NotificationSvc) -> SuccessResponse
 @router.post("", response_model=NotificationResponse, status_code=status.HTTP_201_CREATED)
 async def create_notification(
     data: CreateNotificationRequest,
+    _user: CurrentApprovedUser,
     service: NotificationSvc,
 ) -> NotificationResponse:
     """Create a notification (for testing/manual alerts)."""
@@ -174,7 +179,7 @@ async def create_notification(
 
 
 @router.post("/check-alerts", response_model=SuccessResponse)
-async def trigger_alert_check() -> SuccessResponse:
+async def trigger_alert_check(_user: CurrentApprovedUser) -> SuccessResponse:
     """Manually trigger alert checks."""
     from app.worker.tasks.alerts import (
         _check_consumer_disconnects,

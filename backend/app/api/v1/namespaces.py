@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import AuditSvc, NamespaceSvc, RequestInfo
+from app.api.deps import AuditSvc, CurrentApprovedUser, NamespaceSvc, RequestInfo
 from app.models.audit import ResourceType
 from app.schemas import (
     NamespaceCreate,
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/tenants/{tenant}/namespaces", tags=["Namespaces"])
 @router.get("", response_model=NamespaceListResponse)
 async def list_namespaces(
     tenant: str,
+    _user: CurrentApprovedUser,
     service: NamespaceSvc,
     use_cache: bool = Query(default=True, description="Use cached data"),
 ) -> NamespaceListResponse:
@@ -34,6 +35,7 @@ async def list_namespaces(
 async def get_namespace(
     tenant: str,
     namespace: str,
+    _user: CurrentApprovedUser,
     service: NamespaceSvc,
 ) -> NamespaceDetailResponse:
     """Get namespace details."""
@@ -45,6 +47,7 @@ async def get_namespace(
 async def create_namespace(
     tenant: str,
     data: NamespaceCreate,
+    _user: CurrentApprovedUser,
     service: NamespaceSvc,
     audit: AuditSvc,
     request_info: RequestInfo,
@@ -67,6 +70,7 @@ async def update_namespace_policies(
     tenant: str,
     namespace: str,
     data: NamespaceUpdate,
+    _user: CurrentApprovedUser,
     service: NamespaceSvc,
     audit: AuditSvc,
     request_info: RequestInfo,
@@ -103,6 +107,7 @@ async def update_namespace_policies(
 async def delete_namespace(
     tenant: str,
     namespace: str,
+    _user: CurrentApprovedUser,
     service: NamespaceSvc,
     audit: AuditSvc,
     request_info: RequestInfo,

@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, status
 
-from app.api.deps import DbSession, EnvService
+from app.api.deps import CurrentApprovedUser, DbSession, EnvService
 from app.models.environment import AuthMode, Environment
 from app.schemas import (
     EnvironmentCreate,
@@ -33,7 +33,7 @@ def _env_to_response(env: Environment) -> EnvironmentResponse:
 
 
 @router.get("", response_model=EnvironmentResponse | None)
-async def get_environment(service: EnvService) -> EnvironmentResponse | None:
+async def get_environment(_user: CurrentApprovedUser, service: EnvService) -> EnvironmentResponse | None:
     """Get the active environment configuration."""
     env = await service.get_environment()
     if env is None:
@@ -42,7 +42,7 @@ async def get_environment(service: EnvService) -> EnvironmentResponse | None:
 
 
 @router.get("/all", response_model=EnvironmentListResponse)
-async def list_environments(service: EnvService) -> EnvironmentListResponse:
+async def list_environments(_user: CurrentApprovedUser, service: EnvService) -> EnvironmentListResponse:
     """List all environment configurations."""
     envs = await service.get_all_environments()
     return EnvironmentListResponse(
@@ -52,7 +52,7 @@ async def list_environments(service: EnvService) -> EnvironmentListResponse:
 
 
 @router.post("/{name}/activate", response_model=EnvironmentResponse)
-async def activate_environment(name: str, service: EnvService) -> EnvironmentResponse:
+async def activate_environment(name: str, _user: CurrentApprovedUser, service: EnvService) -> EnvironmentResponse:
     """Set an environment as active."""
     env = await service.set_active_environment(name)
     return _env_to_response(env)
@@ -61,6 +61,7 @@ async def activate_environment(name: str, service: EnvService) -> EnvironmentRes
 @router.post("", response_model=EnvironmentResponse, status_code=status.HTTP_201_CREATED)
 async def create_environment(
     data: EnvironmentCreate,
+    _user: CurrentApprovedUser,
     service: EnvService,
 ) -> EnvironmentResponse:
     """Create a new environment configuration."""
@@ -79,6 +80,7 @@ async def create_environment(
 async def update_environment(
     name: str,
     data: EnvironmentUpdate,
+    _user: CurrentApprovedUser,
     service: EnvService,
 ) -> EnvironmentResponse:
     """Update environment configuration."""
@@ -95,7 +97,7 @@ async def update_environment(
 
 
 @router.delete("/{name}", response_model=SuccessResponse)
-async def delete_environment(name: str, service: EnvService) -> SuccessResponse:
+async def delete_environment(name: str, _user: CurrentApprovedUser, service: EnvService) -> SuccessResponse:
     """Delete environment configuration."""
     deleted = await service.delete_environment(name)
     return SuccessResponse(
@@ -107,6 +109,7 @@ async def delete_environment(name: str, service: EnvService) -> SuccessResponse:
 @router.post("/test", response_model=EnvironmentTestResponse)
 async def test_connectivity(
     data: EnvironmentTestRequest,
+    _user: CurrentApprovedUser,
     service: EnvService,
 ) -> EnvironmentTestResponse:
     """Test connectivity to a Pulsar cluster."""
