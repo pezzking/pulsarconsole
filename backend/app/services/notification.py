@@ -84,7 +84,7 @@ class NotificationService:
         message: str,
         resource_type: str | None = None,
         resource_id: str | None = None,
-        metadata: dict[str, Any] | None = None,
+        extra_data: dict[str, Any] | None = None,
         dedupe_hours: int = 1,
     ) -> Notification | None:
         """Create a notification, with optional deduplication."""
@@ -115,7 +115,7 @@ class NotificationService:
             message=message,
             resource_type=resource_type,
             resource_id=resource_id,
-            metadata=metadata,
+            extra_data=extra_data,
         )
 
         logger.info(
@@ -161,7 +161,7 @@ class NotificationService:
                             f"Backlog: {backlog:,} messages.",
                     resource_type="subscription",
                     resource_id=f"{topic}/{name}",
-                    metadata={
+                    extra_data={
                         "topic": topic,
                         "subscription": name,
                         "backlog": backlog,
@@ -194,7 +194,7 @@ class NotificationService:
                     message=f"Broker '{url}' is not responding or in unhealthy state.",
                     resource_type="broker",
                     resource_id=url,
-                    metadata={
+                    extra_data={
                         "broker_url": url,
                         "is_healthy": is_healthy,
                     },
@@ -220,7 +220,7 @@ class NotificationService:
                 message=f"Broker '{url}' - CPU: {cpu_usage:.1f}%, Memory: {memory_usage:.1f}%",
                 resource_type="broker",
                 resource_id=url,
-                metadata={
+                extra_data={
                     "broker_url": url,
                     "cpu_usage": cpu_usage,
                     "memory_usage": memory_usage,
@@ -258,7 +258,7 @@ class NotificationService:
                 message=f"Topic '{name}' is using {storage_mb:.1f} MB of storage.",
                 resource_type="topic",
                 resource_id=name,
-                metadata={
+                extra_data={
                     "topic": name,
                     "storage_mb": round(storage_mb, 2),
                     "storage_bytes": storage_bytes,

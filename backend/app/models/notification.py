@@ -58,7 +58,7 @@ class Notification(BaseModel):
         String(512),
         nullable=True,
     )
-    metadata: Mapped[dict | None] = mapped_column(
+    extra_data: Mapped[dict | None] = mapped_column(
         JSONB,
         nullable=True,
     )

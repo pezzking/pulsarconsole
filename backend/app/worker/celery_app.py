@@ -14,6 +14,7 @@ celery_app = Celery(
         "app.worker.tasks.stats_collection",
         "app.worker.tasks.aggregation",
         "app.worker.tasks.cleanup",
+        "app.worker.tasks.alerts",
     ],
 )
 
@@ -64,6 +65,14 @@ celery_app.conf.update(
         "cleanup-old-audit": {
             "task": "app.worker.tasks.cleanup.cleanup_old_audit",
             "schedule": crontab(hour=3, minute=0),  # Daily at 3 AM
+        },
+        "check-alerts": {
+            "task": "check_alerts",
+            "schedule": 300,  # Every 5 minutes
+        },
+        "cleanup-old-notifications": {
+            "task": "cleanup_old_notifications",
+            "schedule": crontab(hour=4, minute=0),  # Daily at 4 AM
         },
     },
 )

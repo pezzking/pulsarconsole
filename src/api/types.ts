@@ -328,7 +328,7 @@ export type NotificationType =
 
 export type NotificationSeverity = 'info' | 'warning' | 'critical';
 
-export interface Notification {
+export interface PulsarNotification {
   id: string;
   type: NotificationType;
   severity: NotificationSeverity;
@@ -343,7 +343,7 @@ export interface Notification {
 }
 
 export interface NotificationListResponse {
-  notifications: Notification[];
+  notifications: PulsarNotification[];
   total: number;
   unread_count: number;
 }

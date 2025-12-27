@@ -49,7 +49,7 @@ async def list_notifications(
                 message=n.message,
                 resource_type=n.resource_type,
                 resource_id=n.resource_id,
-                metadata=n.metadata,
+                metadata=n.extra_data,
                 is_read=n.is_read,
                 is_dismissed=n.is_dismissed,
                 created_at=n.created_at,
@@ -154,7 +154,7 @@ async def create_notification(
         message=data.message,
         resource_type=data.resource_type,
         resource_id=data.resource_id,
-        metadata=data.metadata,
+        extra_data=data.metadata,
         dedupe_hours=0,  # No deduplication for manual creation
     )
 
@@ -166,7 +166,7 @@ async def create_notification(
         message=n.message,
         resource_type=n.resource_type,
         resource_id=n.resource_id,
-        metadata=n.metadata,
+        metadata=n.extra_data,
         is_read=n.is_read,
         is_dismissed=n.is_dismissed,
         created_at=n.created_at,

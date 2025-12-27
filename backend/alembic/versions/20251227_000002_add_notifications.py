@@ -30,7 +30,7 @@ def upgrade() -> None:
         sa.Column("message", sa.Text, nullable=False),
         sa.Column("resource_type", sa.String(50), nullable=True),
         sa.Column("resource_id", sa.String(512), nullable=True),
-        sa.Column("metadata", postgresql.JSONB, nullable=True),
+        sa.Column("extra_data", postgresql.JSONB, nullable=True),
         sa.Column("is_read", sa.Boolean, nullable=False, default=False),
         sa.Column("is_dismissed", sa.Boolean, nullable=False, default=False),
         sa.Column(

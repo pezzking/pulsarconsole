@@ -25,7 +25,7 @@ class NotificationRepository(BaseRepository[Notification]):
         message: str,
         resource_type: str | None = None,
         resource_id: str | None = None,
-        metadata: dict[str, Any] | None = None,
+        extra_data: dict[str, Any] | None = None,
     ) -> Notification:
         """Create a new notification."""
         return await self.create(
@@ -35,7 +35,7 @@ class NotificationRepository(BaseRepository[Notification]):
             message=message,
             resource_type=resource_type,
             resource_id=resource_id,
-            metadata=metadata,
+            extra_data=extra_data,
             is_read=False,
             is_dismissed=False,
         )

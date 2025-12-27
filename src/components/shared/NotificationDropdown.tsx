@@ -20,7 +20,7 @@ import {
     useMarkAllNotificationsRead,
     useDismissNotification,
 } from "@/api/hooks";
-import { Notification, NotificationType, NotificationSeverity } from "@/api/types";
+import { PulsarNotification, NotificationType, NotificationSeverity } from "@/api/types";
 import { formatDistanceToNow } from "date-fns";
 
 function getSeverityIcon(severity: NotificationSeverity) {
@@ -59,7 +59,7 @@ function getSeverityBg(severity: NotificationSeverity) {
 }
 
 interface NotificationItemProps {
-    notification: Notification;
+    notification: PulsarNotification;
     onMarkRead: (id: string) => void;
     onDismiss: (id: string) => void;
 }

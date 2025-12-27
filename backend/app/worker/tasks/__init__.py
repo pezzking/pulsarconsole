@@ -1,6 +1,7 @@
 """Celery tasks."""
 
 from app.worker.tasks.aggregation import compute_aggregations
+from app.worker.tasks.alerts import check_alerts, cleanup_old_notifications
 from app.worker.tasks.cleanup import cleanup_old_audit, cleanup_old_stats
 from app.worker.tasks.stats_collection import (
     collect_broker_stats,
@@ -15,4 +16,6 @@ __all__ = [
     "compute_aggregations",
     "cleanup_old_stats",
     "cleanup_old_audit",
+    "check_alerts",
+    "cleanup_old_notifications",
 ]

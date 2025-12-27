@@ -22,7 +22,7 @@ import {
     useDismissNotification,
     useDismissAllNotifications,
 } from "@/api/hooks";
-import { Notification, NotificationType, NotificationSeverity } from "@/api/types";
+import { PulsarNotification, NotificationType, NotificationSeverity } from "@/api/types";
 import { formatDistanceToNow, format } from "date-fns";
 
 function getSeverityIcon(severity: NotificationSeverity, size: "sm" | "md" = "md") {
@@ -87,7 +87,7 @@ function getTypeLabel(type: NotificationType) {
     }
 }
 
-function getResourceLink(notification: Notification): string | null {
+function getResourceLink(notification: PulsarNotification): string | null {
     if (!notification.resource_type || !notification.resource_id) return null;
 
     const parts = notification.resource_id.split("/");
