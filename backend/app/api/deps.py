@@ -168,37 +168,6 @@ def get_session_id(
     return f"ip:{client_ip}"
 
 
-async def get_request_info(
-    request: Request,
-    current_user: Annotated[User | None, Depends(get_current_user_optional)],
-) -> dict:
-    """Get request info for audit logging, including user context."""
-    from app.config import settings
-
-    # Base request info
-    info = {
-        "ip_address": request.client.host if request.client else None,
-        "user_agent": request.headers.get("user-agent"),
-    }
-
-    # Add user context based on authentication mode
-    if settings.oidc_enabled:
-        # OIDC is enabled - use authenticated user if available
-        if current_user:
-            info["user_id"] = str(current_user.id)
-            info["user_email"] = current_user.email or current_user.display_name or "Unknown"
-        else:
-            # OIDC enabled but no user (unauthenticated request)
-            info["user_id"] = None
-            info["user_email"] = "Anonymous"
-    else:
-        # OIDC not enabled - use System user
-        info["user_id"] = "system"
-        info["user_email"] = "System user"
-
-    return info
-
-
 # =============================================================================
 # Authentication Dependencies
 # =============================================================================
@@ -275,6 +244,37 @@ async def get_current_user_optional(
         return await get_current_user(request, credentials, db)
     except HTTPException:
         return None
+
+
+async def get_request_info(
+    request: Request,
+    current_user: Annotated[User | None, Depends(get_current_user_optional)],
+) -> dict:
+    """Get request info for audit logging, including user context."""
+    from app.config import settings
+
+    # Base request info
+    info = {
+        "ip_address": request.client.host if request.client else None,
+        "user_agent": request.headers.get("user-agent"),
+    }
+
+    # Add user context based on authentication mode
+    if settings.oidc_enabled:
+        # OIDC is enabled - use authenticated user if available
+        if current_user:
+            info["user_id"] = str(current_user.id)
+            info["user_email"] = current_user.email or current_user.display_name or "Unknown"
+        else:
+            # OIDC enabled but no user (unauthenticated request)
+            info["user_id"] = None
+            info["user_email"] = "Anonymous"
+    else:
+        # OIDC not enabled - use System user
+        info["user_id"] = "system"
+        info["user_email"] = "System user"
+
+    return info
 
 
 async def get_current_active_user(
