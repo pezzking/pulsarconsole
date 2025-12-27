@@ -1141,6 +1141,49 @@ If I'm using OIDC, also include:
 4. Key rotation handling
 5. Example of obtaining a token via client credentials grant
 
+## Identity Provider Application Setup
+
+For my chosen OIDC provider, explain how to create and configure the application:
+
+### Keycloak
+- Create a new Client in the realm
+- Client type: **OpenID Connect**
+- Client authentication: **ON** (confidential client)
+- Authentication flow: Enable **Service accounts roles** (for Client Credentials)
+- Set valid redirect URIs (if needed for admin console)
+- Copy: Client ID, Client Secret
+- Note the realm's JWKS URL: \`https://{host}/realms/{realm}/protocol/openid-connect/certs\`
+
+### Auth0
+- Create a new Application
+- Application type: **Machine to Machine**
+- Authorize the application for your API
+- Copy: Domain, Client ID, Client Secret
+- Create an API with a custom identifier (audience)
+- JWKS URL: \`https://{tenant}.auth0.com/.well-known/jwks.json\`
+
+### Zitadel
+- Create a new Application
+- Application type: **API** (for machine-to-machine)
+- Authentication method: **Client Secret Basic** or **Private Key JWT**
+- Copy: Client ID, Client Secret (or generate key)
+- Create a Project and note the Resource ID (used as audience)
+- JWKS URL: \`https://{instance}.zitadel.cloud/oauth/v2/keys\`
+
+### Okta
+- Create a new Application
+- Application type: **API Services** (machine-to-machine)
+- Grant type: **Client Credentials**
+- Copy: Client ID, Client Secret
+- Create an Authorization Server or use default
+- Note the audience (issuer URI or custom)
+- JWKS URL: \`https://{org}.okta.com/oauth2/{authServerId}/v1/keys\`
+
+For each provider, also show:
+- How to add custom claims to tokens (for roles/permissions)
+- How to configure token lifetime
+- How to test token generation with curl
+
 ## Output Format
 
 Please provide:
