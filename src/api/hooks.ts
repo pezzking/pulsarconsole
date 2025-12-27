@@ -981,7 +981,8 @@ export function useAssignUserRole() {
   return useMutation<SuccessResponse, Error, { userId: string; roleId: string }>({
     mutationFn: async ({ userId, roleId }) => {
       const { data } = await api.post<SuccessResponse>(
-        `/api/v1/rbac/users/${userId}/roles/${roleId}`
+        `/api/v1/rbac/users/${userId}/roles`,
+        { role_id: roleId }
       );
       return data;
     },
@@ -1132,6 +1133,9 @@ export interface PulsarAuthStatus {
 
 export interface PulsarAuthValidation {
   can_proceed: boolean;
+  can_enable_auth: boolean;
+  has_valid_token: boolean;
+  superuser_roles_configured: boolean;
   warnings: string[];
   errors: string[];
   current_config: Record<string, unknown>;

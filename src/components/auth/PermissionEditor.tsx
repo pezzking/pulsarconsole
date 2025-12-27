@@ -136,8 +136,8 @@ export default function PermissionEditor({
 
       {/* Permission List */}
       <div className="space-y-2">
-        {permissions && permissions.length > 0 ? (
-          permissions.map((perm) => (
+        {permissions?.permissions && permissions.permissions.length > 0 ? (
+          permissions.permissions.map((perm: PulsarPermission) => (
             <motion.div
               key={perm.role}
               layout

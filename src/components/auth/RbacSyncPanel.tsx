@@ -19,7 +19,6 @@ import {
   useRbacDiff,
   useRbacSyncPreview,
   useRbacSync,
-  type SyncDiffResponse,
 } from '@/api/hooks';
 import { ConfirmDialog } from '@/components/shared';
 
@@ -52,7 +51,7 @@ export default function RbacSyncPanel({
         tenant,
         namespace,
         direction,
-        dry_run: false,
+        dryRun: false,
       });
 
       if (result.success) {

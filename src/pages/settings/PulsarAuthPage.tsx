@@ -216,8 +216,8 @@ export default function PulsarAuthPage() {
                   >
                     <option value="">Select namespace...</option>
                     {namespaces?.map((ns) => (
-                      <option key={ns.name} value={ns.name}>
-                        {ns.name}
+                      <option key={ns.namespace} value={ns.namespace}>
+                        {ns.namespace}
                       </option>
                     ))}
                   </select>
@@ -284,8 +284,8 @@ export default function PulsarAuthPage() {
                   >
                     <option value="">Select namespace...</option>
                     {namespaces?.map((ns) => (
-                      <option key={ns.name} value={ns.name}>
-                        {ns.name}
+                      <option key={ns.namespace} value={ns.namespace}>
+                        {ns.namespace}
                       </option>
                     ))}
                   </select>

@@ -249,6 +249,11 @@ export default function UsersPage() {
               topics, and other Pulsar resources. System roles cannot be removed from users.
             </p>
             <p className="text-sm text-muted-foreground mt-2">
+              Users awaiting access approval can be activated by assigning them a role.
+              Once a role is assigned, the user gains the corresponding permissions
+              and can access the console.
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
               When OIDC authentication is enabled and no users exist in the system,
               the first user to sign in is automatically assigned the superuser role,
               granting full administrative access. Subsequent users must be assigned

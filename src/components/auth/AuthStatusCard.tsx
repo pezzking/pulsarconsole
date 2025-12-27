@@ -118,19 +118,19 @@ export default function AuthStatusCard({
         </div>
 
         {/* Auth Provider */}
-        {status?.auth_provider && (
+        {status?.authorization_provider && (
           <div className="p-4 bg-white/5 rounded-lg">
             <p className="text-sm text-muted-foreground">Auth Provider</p>
-            <p className="font-medium capitalize">{status.auth_provider}</p>
+            <p className="font-medium capitalize">{status.authorization_provider}</p>
           </div>
         )}
 
         {/* Superuser Roles */}
-        {status?.superuser_roles && status.superuser_roles.length > 0 && (
+        {status?.super_user_roles && status.super_user_roles.length > 0 && (
           <div className="p-4 bg-white/5 rounded-lg">
             <p className="text-sm text-muted-foreground">Superuser Roles</p>
             <div className="flex flex-wrap gap-1 mt-1">
-              {status.superuser_roles.map((role) => (
+              {status.super_user_roles.map((role: string) => (
                 <span
                   key={role}
                   className="px-2 py-0.5 text-xs bg-primary/10 text-primary rounded-full"
