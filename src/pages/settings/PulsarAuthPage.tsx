@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield,
   RefreshCw,
@@ -10,6 +10,16 @@ import {
   AlertTriangle,
   Save,
   Trash2,
+  HelpCircle,
+  X,
+  Key,
+  Lock,
+  Server,
+  Container,
+  Cloud,
+  Terminal,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -28,6 +38,882 @@ import { ConfirmDialog } from '@/components/shared';
 import { cn } from '@/lib/utils';
 
 type TabType = 'status' | 'permissions' | 'sync' | 'config';
+type GuideSection = 'overview' | 'docker' | 'kubernetes' | 'standalone' | 'cluster' | 'token' | 'oidc';
+
+function CodeBlock({ code, language = 'bash' }: { code: string; language?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative group">
+      <pre className={`p-4 bg-zinc-900 rounded-lg text-sm overflow-x-auto language-${language}`}>
+        <code className="text-zinc-300">{code}</code>
+      </pre>
+      <button
+        onClick={handleCopy}
+        className="absolute top-2 right-2 p-1.5 bg-zinc-800 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+        title="Copy"
+      >
+        {copied ? (
+          <Check size={14} className="text-green-500" />
+        ) : (
+          <Copy size={14} className="text-zinc-400" />
+        )}
+      </button>
+    </div>
+  );
+}
+
+function AuthGuideModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [activeSection, setActiveSection] = useState<GuideSection>('overview');
+
+  const sections: { id: GuideSection; label: string; icon: typeof Shield }[] = [
+    { id: 'overview', label: 'Overview', icon: Shield },
+    { id: 'docker', label: 'Docker', icon: Container },
+    { id: 'kubernetes', label: 'K8S / OpenShift', icon: Cloud },
+    { id: 'standalone', label: 'Standalone', icon: Terminal },
+    { id: 'cluster', label: 'Cluster', icon: Server },
+    { id: 'token', label: 'Token Secret Key', icon: Key },
+    { id: 'oidc', label: 'OIDC Integration', icon: Lock },
+  ];
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-zinc-700 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-xl">
+                  <HelpCircle className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">Pulsar Authentication Guide</h2>
+                  <p className="text-sm text-muted-foreground">
+                    How to enable and configure authentication
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex flex-1 overflow-hidden">
+              {/* Sidebar */}
+              <div className="w-56 border-r border-zinc-700 p-4 flex-shrink-0 overflow-y-auto">
+                <nav className="space-y-1">
+                  {sections.map((section) => (
+                    <button
+                      key={section.id}
+                      onClick={() => setActiveSection(section.id)}
+                      className={cn(
+                        'w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 transition-colors text-sm',
+                        activeSection === section.id
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:bg-zinc-800 text-muted-foreground'
+                      )}
+                    >
+                      <section.icon size={16} />
+                      {section.label}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+
+              {/* Main Content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {activeSection === 'overview' && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Understanding Pulsar Authentication</h3>
+                      <p className="text-muted-foreground leading-relaxed">
+                        Apache Pulsar supports pluggable authentication and authorization. Authentication
+                        verifies <strong>who</strong> is connecting, while authorization determines <strong>what</strong> they can do.
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-yellow-500">Important</p>
+                          <p className="text-sm text-yellow-400 mt-1">
+                            Authentication can only be enabled via configuration files, not through the Admin API.
+                            Changes require a broker restart to take effect.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-2">Key Configuration Properties</h4>
+                      <div className="space-y-2">
+                        <div className="p-3 bg-zinc-800 rounded-lg">
+                          <code className="text-primary text-sm">authenticationEnabled</code>
+                          <p className="text-xs text-muted-foreground mt-1">Enable/disable authentication (true/false)</p>
+                        </div>
+                        <div className="p-3 bg-zinc-800 rounded-lg">
+                          <code className="text-primary text-sm">authorizationEnabled</code>
+                          <p className="text-xs text-muted-foreground mt-1">Enable/disable authorization (true/false)</p>
+                        </div>
+                        <div className="p-3 bg-zinc-800 rounded-lg">
+                          <code className="text-primary text-sm">authenticationProviders</code>
+                          <p className="text-xs text-muted-foreground mt-1">Comma-separated list of auth provider classes</p>
+                        </div>
+                        <div className="p-3 bg-zinc-800 rounded-lg">
+                          <code className="text-primary text-sm">superUserRoles</code>
+                          <p className="text-xs text-muted-foreground mt-1">Comma-separated list of roles with admin access</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-2">What Can Be Managed via Admin API</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                          <p className="font-medium text-green-500 mb-2">Via Admin API</p>
+                          <ul className="text-sm text-green-400 space-y-1">
+                            <li>• Namespace permissions</li>
+                            <li>• Topic permissions</li>
+                            <li>• Tenant admin roles</li>
+                            <li>• Grant/revoke access</li>
+                          </ul>
+                        </div>
+                        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                          <p className="font-medium text-red-500 mb-2">Config File Only</p>
+                          <ul className="text-sm text-red-400 space-y-1">
+                            <li>• Enable/disable auth</li>
+                            <li>• Auth provider selection</li>
+                            <li>• Secret key configuration</li>
+                            <li>• Superuser roles</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeSection === 'docker' && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <Container className="text-primary" />
+                        Docker Configuration
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Configure authentication using environment variables or mounted config files.
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Option 1: Environment Variables</h4>
+                      <CodeBlock
+                        code={`docker run -d --name pulsar \\
+  -p 6650:6650 -p 8080:8080 \\
+  -e PULSAR_PREFIX_authenticationEnabled=true \\
+  -e PULSAR_PREFIX_authorizationEnabled=true \\
+  -e PULSAR_PREFIX_authenticationProviders=org.apache.pulsar.broker.authentication.AuthenticationProviderToken \\
+  -e PULSAR_PREFIX_tokenSecretKey=file:///pulsar/conf/secret.key \\
+  -e PULSAR_PREFIX_superUserRoles=admin \\
+  -v /path/to/secret.key:/pulsar/conf/secret.key:ro \\
+  apachepulsar/pulsar:latest bin/pulsar standalone`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Option 2: Docker Compose</h4>
+                      <CodeBlock
+                        language="yaml"
+                        code={`version: '3.8'
+services:
+  pulsar:
+    image: apachepulsar/pulsar:latest
+    command: bin/pulsar standalone
+    ports:
+      - "6650:6650"
+      - "8080:8080"
+    environment:
+      PULSAR_PREFIX_authenticationEnabled: "true"
+      PULSAR_PREFIX_authorizationEnabled: "true"
+      PULSAR_PREFIX_authenticationProviders: >-
+        org.apache.pulsar.broker.authentication.AuthenticationProviderToken
+      PULSAR_PREFIX_tokenSecretKey: "file:///pulsar/conf/secret.key"
+      PULSAR_PREFIX_superUserRoles: "admin"
+    volumes:
+      - ./secret.key:/pulsar/conf/secret.key:ro
+      - pulsar-data:/pulsar/data
+
+volumes:
+  pulsar-data:`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Option 3: Custom Config File</h4>
+                      <CodeBlock
+                        code={`# Create standalone.conf with auth settings
+docker run -d --name pulsar \\
+  -p 6650:6650 -p 8080:8080 \\
+  -v /path/to/standalone.conf:/pulsar/conf/standalone.conf:ro \\
+  -v /path/to/secret.key:/pulsar/conf/secret.key:ro \\
+  apachepulsar/pulsar:latest bin/pulsar standalone`}
+                      />
+                    </div>
+
+                    <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                      <p className="font-medium text-blue-500 mb-2">Generate Secret Key</p>
+                      <CodeBlock
+                        code={`# Generate a secret key for JWT tokens
+docker run --rm apachepulsar/pulsar:latest \\
+  bin/pulsar tokens create-secret-key --output /dev/stdout > secret.key`}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {activeSection === 'kubernetes' && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <Cloud className="text-primary" />
+                        Kubernetes / OpenShift / OKD
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Configure authentication using Secrets and ConfigMaps.
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 1: Create Secret for Token Key</h4>
+                      <CodeBlock
+                        code={`# Generate secret key
+bin/pulsar tokens create-secret-key --output secret.key
+
+# Create Kubernetes secret
+kubectl create secret generic pulsar-token-secret \\
+  --from-file=secret.key=./secret.key \\
+  -n pulsar`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 2: Create ConfigMap for Auth Settings</h4>
+                      <CodeBlock
+                        language="yaml"
+                        code={`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pulsar-auth-config
+  namespace: pulsar
+data:
+  PULSAR_PREFIX_authenticationEnabled: "true"
+  PULSAR_PREFIX_authorizationEnabled: "true"
+  PULSAR_PREFIX_authenticationProviders: >-
+    org.apache.pulsar.broker.authentication.AuthenticationProviderToken
+  PULSAR_PREFIX_tokenSecretKey: "file:///pulsar/secrets/secret.key"
+  PULSAR_PREFIX_superUserRoles: "admin,pulsar-admin"
+  PULSAR_PREFIX_brokerClientAuthenticationPlugin: >-
+    org.apache.pulsar.client.impl.auth.AuthenticationToken
+  PULSAR_PREFIX_brokerClientAuthenticationParameters: >-
+    file:///pulsar/tokens/admin.jwt`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 3: Update Deployment/StatefulSet</h4>
+                      <CodeBlock
+                        language="yaml"
+                        code={`apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pulsar-broker
+spec:
+  template:
+    spec:
+      containers:
+      - name: broker
+        envFrom:
+        - configMapRef:
+            name: pulsar-auth-config
+        volumeMounts:
+        - name: token-secret
+          mountPath: /pulsar/secrets
+          readOnly: true
+        - name: admin-token
+          mountPath: /pulsar/tokens
+          readOnly: true
+      volumes:
+      - name: token-secret
+        secret:
+          secretName: pulsar-token-secret
+      - name: admin-token
+        secret:
+          secretName: pulsar-admin-token`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">OpenShift-Specific: Security Context</h4>
+                      <CodeBlock
+                        language="yaml"
+                        code={`# For OpenShift, you may need to set appropriate SCCs
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: pulsar-scc
+allowHostDirVolumePlugin: false
+allowHostNetwork: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+runAsUser:
+  type: MustRunAsRange
+fsGroup:
+  type: MustRunAs
+volumes:
+  - configMap
+  - secret
+  - persistentVolumeClaim`}
+                      />
+                    </div>
+
+                    <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                      <p className="font-medium text-blue-500 mb-2">Helm Chart Configuration</p>
+                      <CodeBlock
+                        language="yaml"
+                        code={`# values.yaml for Apache Pulsar Helm chart
+auth:
+  authentication:
+    enabled: true
+    provider: jwt
+  authorization:
+    enabled: true
+  superUsers:
+    broker: "admin"
+    client: "admin"
+    proxy: "admin"
+tokens:
+  secretKey: "pulsar-token-secret"
+  adminToken: "pulsar-admin-token"`}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {activeSection === 'standalone' && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <Terminal className="text-primary" />
+                        Standalone Mode
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Configure authentication by editing <code>conf/standalone.conf</code>.
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 1: Generate Secret Key</h4>
+                      <CodeBlock
+                        code={`cd /path/to/pulsar
+
+# Generate a secret key
+bin/pulsar tokens create-secret-key \\
+  --output conf/my-secret.key`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 2: Generate Admin Token</h4>
+                      <CodeBlock
+                        code={`# Generate token for admin user
+bin/pulsar tokens create \\
+  --secret-key file:///path/to/pulsar/conf/my-secret.key \\
+  --subject admin
+
+# Save the output token to a file
+bin/pulsar tokens create \\
+  --secret-key file:///path/to/pulsar/conf/my-secret.key \\
+  --subject admin > conf/admin.jwt`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 3: Edit standalone.conf</h4>
+                      <CodeBlock
+                        language="properties"
+                        code={`# conf/standalone.conf
+
+### --- Authentication Settings --- ###
+authenticationEnabled=true
+authenticationProviders=org.apache.pulsar.broker.authentication.AuthenticationProviderToken
+
+# Token authentication settings
+tokenSecretKey=file:///path/to/pulsar/conf/my-secret.key
+
+### --- Authorization Settings --- ###
+authorizationEnabled=true
+authorizationProvider=org.apache.pulsar.broker.authorization.PulsarAuthorizationProvider
+
+# Superuser roles (comma-separated)
+superUserRoles=admin
+
+### --- Broker Client Authentication --- ###
+# Required for internal broker communication
+brokerClientAuthenticationPlugin=org.apache.pulsar.client.impl.auth.AuthenticationToken
+brokerClientAuthenticationParameters=file:///path/to/pulsar/conf/admin.jwt`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 4: Restart Pulsar</h4>
+                      <CodeBlock
+                        code={`# Stop Pulsar
+bin/pulsar-daemon stop standalone
+
+# Start Pulsar
+bin/pulsar-daemon start standalone
+
+# Or run in foreground
+bin/pulsar standalone`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 5: Test with pulsar-admin</h4>
+                      <CodeBlock
+                        code={`# Set auth token
+export PULSAR_AUTH_PARAMS="file:///path/to/pulsar/conf/admin.jwt"
+
+# Or use command line argument
+bin/pulsar-admin \\
+  --auth-plugin org.apache.pulsar.client.impl.auth.AuthenticationToken \\
+  --auth-params "file:///path/to/pulsar/conf/admin.jwt" \\
+  tenants list`}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {activeSection === 'cluster' && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <Server className="text-primary" />
+                        Cluster Deployment
+                      </h3>
+                      <p className="text-muted-foreground">
+                        In a cluster deployment, configure all brokers with the same authentication settings.
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-yellow-500">Critical Requirement</p>
+                          <p className="text-sm text-yellow-400 mt-1">
+                            All brokers in the cluster MUST use the same secret key. Otherwise, tokens
+                            generated by one broker won't work on others.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 1: Generate Shared Secret Key</h4>
+                      <CodeBlock
+                        code={`# Generate secret key on one machine
+bin/pulsar tokens create-secret-key --output /shared/path/secret.key
+
+# Copy to all broker nodes (use secure method)
+scp /shared/path/secret.key broker1:/pulsar/conf/
+scp /shared/path/secret.key broker2:/pulsar/conf/
+scp /shared/path/secret.key broker3:/pulsar/conf/`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 2: Configure broker.conf (All Brokers)</h4>
+                      <CodeBlock
+                        language="properties"
+                        code={`# conf/broker.conf (same on all brokers)
+
+### --- Authentication --- ###
+authenticationEnabled=true
+authenticationProviders=org.apache.pulsar.broker.authentication.AuthenticationProviderToken
+tokenSecretKey=file:///pulsar/conf/secret.key
+
+### --- Authorization --- ###
+authorizationEnabled=true
+authorizationProvider=org.apache.pulsar.broker.authorization.PulsarAuthorizationProvider
+superUserRoles=admin,broker-admin
+
+### --- Internal Communication --- ###
+brokerClientAuthenticationPlugin=org.apache.pulsar.client.impl.auth.AuthenticationToken
+brokerClientAuthenticationParameters=file:///pulsar/conf/broker.jwt
+
+### --- TLS (Recommended for Production) --- ###
+brokerServicePortTls=6651
+webServicePortTls=8443
+tlsEnabled=true
+tlsCertificateFilePath=/pulsar/conf/broker.cert.pem
+tlsKeyFilePath=/pulsar/conf/broker.key-pk8.pem
+tlsTrustCertsFilePath=/pulsar/conf/ca.cert.pem`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 3: Configure Proxy (If Used)</h4>
+                      <CodeBlock
+                        language="properties"
+                        code={`# conf/proxy.conf
+
+authenticationEnabled=true
+authenticationProviders=org.apache.pulsar.broker.authentication.AuthenticationProviderToken
+tokenSecretKey=file:///pulsar/conf/secret.key
+
+# Proxy's own authentication to brokers
+brokerClientAuthenticationPlugin=org.apache.pulsar.client.impl.auth.AuthenticationToken
+brokerClientAuthenticationParameters=file:///pulsar/conf/proxy.jwt`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 4: Rolling Restart</h4>
+                      <CodeBlock
+                        code={`# Restart brokers one by one to avoid downtime
+# On each broker:
+bin/pulsar-daemon stop broker
+bin/pulsar-daemon start broker
+
+# Wait for broker to rejoin cluster before proceeding to next`}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {activeSection === 'token' && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <Key className="text-primary" />
+                        Token Secret Key
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Understanding how <code>tokenSecretKey</code> works for JWT authentication.
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">How It Works</h4>
+                      <div className="p-4 bg-zinc-800 rounded-xl space-y-3">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                            <span className="text-primary font-bold">1</span>
+                          </div>
+                          <div>
+                            <p className="font-medium">Secret Key Generation</p>
+                            <p className="text-sm text-muted-foreground">
+                              A cryptographic key is generated and stored securely on the broker.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                            <span className="text-primary font-bold">2</span>
+                          </div>
+                          <div>
+                            <p className="font-medium">Token Creation</p>
+                            <p className="text-sm text-muted-foreground">
+                              Tokens are signed using this key. The "subject" becomes the role/principal.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                            <span className="text-primary font-bold">3</span>
+                          </div>
+                          <div>
+                            <p className="font-medium">Token Validation</p>
+                            <p className="text-sm text-muted-foreground">
+                              Broker validates incoming tokens using the same key. Invalid signatures are rejected.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Symmetric vs Asymmetric Keys</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-zinc-800 rounded-lg">
+                          <p className="font-medium text-blue-400 mb-2">Symmetric (Secret Key)</p>
+                          <p className="text-sm text-muted-foreground mb-3">Same key for signing and verification</p>
+                          <CodeBlock
+                            code={`# Generate symmetric key
+bin/pulsar tokens create-secret-key \\
+  --output secret.key
+
+# In broker.conf
+tokenSecretKey=file:///path/secret.key`}
+                          />
+                        </div>
+                        <div className="p-4 bg-zinc-800 rounded-lg">
+                          <p className="font-medium text-green-400 mb-2">Asymmetric (Key Pair)</p>
+                          <p className="text-sm text-muted-foreground mb-3">Private key signs, public key verifies</p>
+                          <CodeBlock
+                            code={`# Generate key pair
+bin/pulsar tokens create-key-pair \\
+  --output-private-key private.key \\
+  --output-public-key public.key
+
+# In broker.conf
+tokenPublicKey=file:///path/public.key`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Creating Tokens for Different Roles</h4>
+                      <CodeBlock
+                        code={`# Admin token (superuser)
+bin/pulsar tokens create \\
+  --secret-key file:///path/to/secret.key \\
+  --subject admin
+
+# Service account token
+bin/pulsar tokens create \\
+  --secret-key file:///path/to/secret.key \\
+  --subject order-service
+
+# Token with expiration (recommended)
+bin/pulsar tokens create \\
+  --secret-key file:///path/to/secret.key \\
+  --subject analytics-reader \\
+  --expiry-time 30d`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Token Structure (JWT)</h4>
+                      <div className="p-4 bg-zinc-800 rounded-lg font-mono text-sm">
+                        <p className="text-red-400">eyJhbGciOiJIUzI1NiJ9</p>
+                        <p className="text-muted-foreground text-xs mb-2">Header (algorithm)</p>
+                        <p className="text-green-400">.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTczNTY4OTYwMH0</p>
+                        <p className="text-muted-foreground text-xs mb-2">Payload (subject, expiry)</p>
+                        <p className="text-blue-400">.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c</p>
+                        <p className="text-muted-foreground text-xs">Signature (verified with secret key)</p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-red-500">Security Best Practices</p>
+                          <ul className="text-sm text-red-400 mt-2 space-y-1">
+                            <li>• Never commit secret keys to version control</li>
+                            <li>• Use asymmetric keys in production (separate signing authority)</li>
+                            <li>• Set token expiration for non-admin tokens</li>
+                            <li>• Rotate keys periodically</li>
+                            <li>• Use Kubernetes Secrets or vault for key storage</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeSection === 'oidc' && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <Lock className="text-primary" />
+                        OIDC Integration
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Integrate Pulsar with OpenID Connect providers (Keycloak, Auth0, Okta, Zitadel).
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                      <p className="font-medium text-blue-500 mb-2">Note on Pulsar OAuth2</p>
+                      <p className="text-sm text-blue-400">
+                        Pulsar uses OAuth2 Client Credentials flow for machine-to-machine authentication,
+                        not PKCE (which is for interactive user flows). Tokens from your OIDC provider
+                        are validated by Pulsar using the provider's public keys.
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 1: Configure OIDC Provider</h4>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Create a client application in your OIDC provider:
+                      </p>
+                      <div className="p-4 bg-zinc-800 rounded-lg">
+                        <table className="w-full text-sm">
+                          <tbody>
+                            <tr className="border-b border-zinc-700">
+                              <td className="py-2 text-muted-foreground">Grant Type</td>
+                              <td className="py-2">Client Credentials</td>
+                            </tr>
+                            <tr className="border-b border-zinc-700">
+                              <td className="py-2 text-muted-foreground">Client ID</td>
+                              <td className="py-2">pulsar-broker</td>
+                            </tr>
+                            <tr className="border-b border-zinc-700">
+                              <td className="py-2 text-muted-foreground">Client Secret</td>
+                              <td className="py-2">(generated by provider)</td>
+                            </tr>
+                            <tr>
+                              <td className="py-2 text-muted-foreground">Audience</td>
+                              <td className="py-2">pulsar (or your custom value)</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 2: Configure Pulsar Broker</h4>
+                      <CodeBlock
+                        language="properties"
+                        code={`# broker.conf - OAuth2/OIDC Authentication
+
+authenticationEnabled=true
+authenticationProviders=org.apache.pulsar.broker.authentication.AuthenticationProviderToken
+
+# Use JWKS URL from your OIDC provider
+tokenPublicKey=https://your-provider.com/.well-known/jwks.json
+
+# Or use the issuer URL (Pulsar will fetch JWKS automatically)
+tokenAuthClaim=sub
+tokenAudienceClaim=aud
+tokenAudience=pulsar
+
+# Authorization
+authorizationEnabled=true
+superUserRoles=pulsar-admin
+
+# For providers that include roles in token
+authorizationAllowFunctionOps=true`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Step 3: Client Configuration</h4>
+                      <CodeBlock
+                        code={`# pulsar-admin with OAuth2
+bin/pulsar-admin \\
+  --auth-plugin org.apache.pulsar.client.impl.auth.oauth2.AuthenticationOAuth2 \\
+  --auth-params '{
+    "type": "client_credentials",
+    "issuerUrl": "https://your-provider.com",
+    "clientId": "pulsar-client",
+    "clientSecret": "your-client-secret",
+    "audience": "pulsar"
+  }' \\
+  tenants list`}
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Provider-Specific Examples</h4>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-zinc-800 rounded-lg">
+                          <p className="font-medium text-orange-400 mb-2">Keycloak</p>
+                          <CodeBlock
+                            language="properties"
+                            code={`# JWKS URL format for Keycloak
+tokenPublicKey=https://keycloak.example.com/realms/pulsar/protocol/openid-connect/certs
+
+# Claims mapping
+tokenAuthClaim=preferred_username
+tokenAudienceClaim=aud
+tokenAudience=pulsar-broker`}
+                          />
+                        </div>
+
+                        <div className="p-4 bg-zinc-800 rounded-lg">
+                          <p className="font-medium text-purple-400 mb-2">Auth0</p>
+                          <CodeBlock
+                            language="properties"
+                            code={`# JWKS URL format for Auth0
+tokenPublicKey=https://your-tenant.auth0.com/.well-known/jwks.json
+
+# Claims mapping
+tokenAuthClaim=sub
+tokenAudienceClaim=aud
+tokenAudience=https://pulsar.example.com`}
+                          />
+                        </div>
+
+                        <div className="p-4 bg-zinc-800 rounded-lg">
+                          <p className="font-medium text-cyan-400 mb-2">Zitadel</p>
+                          <CodeBlock
+                            language="properties"
+                            code={`# JWKS URL format for Zitadel
+tokenPublicKey=https://your-instance.zitadel.cloud/oauth/v2/keys
+
+# Claims mapping
+tokenAuthClaim=sub
+tokenAudienceClaim=aud
+tokenAudience=your-project-id`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Mapping OIDC Roles to Pulsar Permissions</h4>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        After authentication, use the subject claim as the role for authorization:
+                      </p>
+                      <CodeBlock
+                        code={`# Grant permissions to OIDC subject/client
+bin/pulsar-admin namespaces grant-permission my-tenant/my-namespace \\
+  --role "service-account-uuid-from-oidc" \\
+  --actions produce,consume
+
+# Or use group claims if configured
+bin/pulsar-admin namespaces grant-permission my-tenant/my-namespace \\
+  --role "oidc-group:analytics-team" \\
+  --actions consume`}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 export default function PulsarAuthPage() {
   const [activeTab, setActiveTab] = useState<TabType>('status');
@@ -36,6 +922,7 @@ export default function PulsarAuthPage() {
   const [editingConfig, setEditingConfig] = useState<string | null>(null);
   const [newConfigValue, setNewConfigValue] = useState('');
   const [deleteConfigConfirm, setDeleteConfigConfirm] = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
 
   // Auth status queries
   const {
@@ -121,21 +1008,30 @@ export default function PulsarAuthPage() {
             Manage authentication, authorization, and permissions
           </p>
         </div>
-        <button
-          onClick={() => {
-            refetchStatus();
-            refetchValidation();
-          }}
-          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          title="Refresh"
-        >
-          <RefreshCw
-            size={20}
-            className={cn(
-              (statusLoading || validationLoading) && 'animate-spin'
-            )}
-          />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowGuide(true)}
+            className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors flex items-center gap-2"
+          >
+            <HelpCircle size={18} />
+            How-to Guide
+          </button>
+          <button
+            onClick={() => {
+              refetchStatus();
+              refetchValidation();
+            }}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw
+              size={20}
+              className={cn(
+                (statusLoading || validationLoading) && 'animate-spin'
+              )}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -453,6 +1349,9 @@ export default function PulsarAuthPage() {
         variant="danger"
         loading={deleteConfig.isPending}
       />
+
+      {/* Auth Guide Modal */}
+      <AuthGuideModal open={showGuide} onClose={() => setShowGuide(false)} />
     </div>
   );
 }
