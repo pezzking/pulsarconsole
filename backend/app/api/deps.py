@@ -25,6 +25,7 @@ from app.services import (
 from app.services.notification import NotificationService
 from app.services.cache import cache_service
 from app.services.auth import AuthService
+from app.services.pulsar_auth import PulsarAuthService
 
 # Security scheme for OpenAPI
 oauth2_scheme = HTTPBearer(auto_error=False)
@@ -79,6 +80,29 @@ async def get_pulsar_client(
         yield client
     finally:
         await client.close()
+
+
+async def get_superuser_pulsar_client(
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> AsyncGenerator[PulsarAdminService, None]:
+    """Get Pulsar admin client with superuser token for auth management."""
+    env_service = EnvironmentService(session)
+    client = await env_service.get_superuser_pulsar_client()
+    try:
+        yield client
+    finally:
+        await client.close()
+
+
+async def get_pulsar_auth_service(
+    pulsar: Annotated[PulsarAdminService, Depends(get_superuser_pulsar_client)],
+) -> AsyncGenerator[PulsarAuthService, None]:
+    """Get Pulsar auth service for managing authentication/authorization."""
+    service = PulsarAuthService(pulsar)
+    try:
+        yield service
+    finally:
+        await service.close()
 
 
 async def get_environment_service(
@@ -397,6 +421,7 @@ RequestInfo = Annotated[dict, Depends(get_request_info)]
 
 # Auth type aliases
 AuthSvc = Annotated[AuthService, Depends(get_auth_service)]
+PulsarAuthSvc = Annotated[PulsarAuthService, Depends(get_pulsar_auth_service)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 CurrentUserOptional = Annotated[User | None, Depends(get_current_user_optional)]
 CurrentActiveUser = Annotated[User, Depends(get_current_active_user)]

@@ -112,6 +112,13 @@ class Environment(BaseModel):
         doc="Encrypted secret key for generating Pulsar JWT tokens",
     )
 
+    # Superuser Token (for auth management operations)
+    superuser_token_encrypted: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Encrypted superuser token for Pulsar auth management (enable/disable auth, manage permissions)",
+    )
+
     # Relationships
     oidc_provider: Mapped["OIDCProvider | None"] = relationship(
         "OIDCProvider",

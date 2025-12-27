@@ -23,8 +23,18 @@ class EnvironmentCreate(EnvironmentBase):
         default="none", description="Authentication mode"
     )
     token: str | None = Field(default=None, description="Authentication token")
+    superuser_token: str | None = Field(
+        default=None,
+        description="Superuser token for auth management (if different from regular token)",
+    )
     ca_bundle_ref: str | None = Field(
         default=None, description="CA bundle reference for TLS"
+    )
+    rbac_enabled: bool = Field(
+        default=False, description="Enable RBAC for this environment"
+    )
+    rbac_sync_mode: Literal["console_only", "sync_to_pulsar", "read_from_pulsar"] = Field(
+        default="console_only", description="RBAC synchronization mode"
     )
     validate_connectivity: bool = Field(
         default=True, description="Test connectivity before saving"
@@ -47,8 +57,18 @@ class EnvironmentUpdate(BaseSchema):
         default=None, description="Authentication mode"
     )
     token: str | None = Field(default=None, description="Authentication token")
+    superuser_token: str | None = Field(
+        default=None,
+        description="Superuser token for auth management (if different from regular token)",
+    )
     ca_bundle_ref: str | None = Field(
         default=None, description="CA bundle reference for TLS"
+    )
+    rbac_enabled: bool | None = Field(
+        default=None, description="Enable RBAC for this environment"
+    )
+    rbac_sync_mode: Literal["console_only", "sync_to_pulsar", "read_from_pulsar"] | None = Field(
+        default=None, description="RBAC synchronization mode"
     )
     validate_connectivity: bool = Field(
         default=True, description="Test connectivity before saving"
@@ -61,8 +81,15 @@ class EnvironmentResponse(EnvironmentBase):
     id: UUID
     auth_mode: str
     has_token: bool = Field(description="Whether token is configured")
+    has_superuser_token: bool = Field(
+        default=False, description="Whether superuser token is configured"
+    )
     ca_bundle_ref: str | None = None
     is_active: bool = Field(default=False, description="Whether this is the active environment")
+    rbac_enabled: bool = Field(default=False, description="Whether RBAC is enabled")
+    rbac_sync_mode: str = Field(
+        default="console_only", description="RBAC synchronization mode"
+    )
     created_at: datetime
     updated_at: datetime | None = None
 

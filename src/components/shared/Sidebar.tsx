@@ -17,6 +17,7 @@ import {
     Key,
     Shield,
     Monitor,
+    Lock,
 } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -47,6 +48,7 @@ const settingsItems = [
 const adminSettingsItems = [
     { icon: Shield, label: "Roles", path: "/settings/roles" },
     { icon: Users, label: "Users", path: "/settings/users" },
+    { icon: Lock, label: "Pulsar Auth", path: "/settings/pulsar-auth" },
 ];
 
 export default function Sidebar() {

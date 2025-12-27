@@ -1115,3 +1115,291 @@ export function useGeneratePulsarToken() {
     },
   });
 }
+
+// =============================================================================
+// Pulsar Auth Hooks
+// =============================================================================
+
+// Types for Pulsar Auth
+export interface PulsarAuthStatus {
+  authentication_enabled: boolean;
+  authorization_enabled: boolean;
+  authentication_providers: string[];
+  super_user_roles: string[];
+  authorization_provider: string | null;
+  raw_config: Record<string, unknown>;
+}
+
+export interface PulsarAuthValidation {
+  can_proceed: boolean;
+  warnings: string[];
+  errors: string[];
+  current_config: Record<string, unknown>;
+}
+
+export interface PulsarPermission {
+  role: string;
+  actions: string[];
+}
+
+export interface PulsarPermissionsResponse {
+  permissions: PulsarPermission[];
+  total: number;
+}
+
+export interface BrokerConfigResponse {
+  config_values: Record<string, string>;
+  available_configs: string[];
+}
+
+export interface SyncChangeInfo {
+  action: string;
+  resource_type: string;
+  resource_id: string;
+  role: string;
+  permissions: string[];
+  source: string;
+}
+
+export interface SyncPreviewResponse {
+  direction: string;
+  changes: SyncChangeInfo[];
+  warnings: string[];
+  errors: string[];
+  can_proceed: boolean;
+  has_changes: boolean;
+}
+
+export interface SyncDiffResponse {
+  only_in_console: Record<string, string[]>;
+  only_in_pulsar: Record<string, string[]>;
+  different: Record<string, { console: string[]; pulsar: string[] }>;
+  same: Record<string, string[]>;
+  total_console: number;
+  total_pulsar: number;
+}
+
+export interface SyncResultResponse {
+  success: boolean;
+  changes_applied: number;
+  changes_failed: number;
+  details: string[];
+  errors: string[];
+}
+
+// Query keys for Pulsar Auth
+export const pulsarAuthKeys = {
+  status: ['pulsar-auth', 'status'] as const,
+  validation: ['pulsar-auth', 'validation'] as const,
+  namespacePermissions: (tenant: string, namespace: string) =>
+    ['pulsar-auth', 'permissions', 'namespace', tenant, namespace] as const,
+  topicPermissions: (tenant: string, namespace: string, topic: string) =>
+    ['pulsar-auth', 'permissions', 'topic', tenant, namespace, topic] as const,
+  brokerConfig: ['pulsar-auth', 'broker-config'] as const,
+  rbacDiff: (tenant: string, namespace: string) =>
+    ['pulsar-auth', 'rbac-diff', tenant, namespace] as const,
+  rbacPreview: (tenant: string, namespace: string) =>
+    ['pulsar-auth', 'rbac-preview', tenant, namespace] as const,
+};
+
+// Auth Status Hooks
+export function usePulsarAuthStatus() {
+  return useQuery<PulsarAuthStatus>({
+    queryKey: pulsarAuthKeys.status,
+    queryFn: async () => {
+      const { data } = await api.get<PulsarAuthStatus>('/api/v1/pulsar-auth/status');
+      return data;
+    },
+  });
+}
+
+export function usePulsarAuthValidation() {
+  return useQuery<PulsarAuthValidation>({
+    queryKey: pulsarAuthKeys.validation,
+    queryFn: async () => {
+      const { data } = await api.get<PulsarAuthValidation>('/api/v1/pulsar-auth/validate');
+      return data;
+    },
+  });
+}
+
+// Namespace Permission Hooks
+export function useNamespacePermissions(tenant: string, namespace: string) {
+  return useQuery<PulsarPermissionsResponse>({
+    queryKey: pulsarAuthKeys.namespacePermissions(tenant, namespace),
+    queryFn: async () => {
+      const { data } = await api.get<PulsarPermissionsResponse>(
+        `/api/v1/pulsar-auth/namespaces/${tenant}/${namespace}/permissions`
+      );
+      return data;
+    },
+    enabled: !!tenant && !!namespace,
+  });
+}
+
+export function useGrantNamespacePermission() {
+  const queryClient = useQueryClient();
+  return useMutation<SuccessResponse, Error, { tenant: string; namespace: string; role: string; actions: string[] }>({
+    mutationFn: async ({ tenant, namespace, role, actions }) => {
+      const { data } = await api.post<SuccessResponse>(
+        `/api/v1/pulsar-auth/namespaces/${tenant}/${namespace}/permissions`,
+        { role, actions }
+      );
+      return data;
+    },
+    onSuccess: (_, { tenant, namespace }) => {
+      queryClient.invalidateQueries({ queryKey: pulsarAuthKeys.namespacePermissions(tenant, namespace) });
+    },
+  });
+}
+
+export function useRevokeNamespacePermission() {
+  const queryClient = useQueryClient();
+  return useMutation<SuccessResponse, Error, { tenant: string; namespace: string; role: string }>({
+    mutationFn: async ({ tenant, namespace, role }) => {
+      const { data } = await api.delete<SuccessResponse>(
+        `/api/v1/pulsar-auth/namespaces/${tenant}/${namespace}/permissions/${role}`
+      );
+      return data;
+    },
+    onSuccess: (_, { tenant, namespace }) => {
+      queryClient.invalidateQueries({ queryKey: pulsarAuthKeys.namespacePermissions(tenant, namespace) });
+    },
+  });
+}
+
+// Topic Permission Hooks
+export function useTopicPermissions(tenant: string, namespace: string, topic: string, persistent = true) {
+  return useQuery<PulsarPermissionsResponse>({
+    queryKey: pulsarAuthKeys.topicPermissions(tenant, namespace, topic),
+    queryFn: async () => {
+      const { data } = await api.get<PulsarPermissionsResponse>(
+        `/api/v1/pulsar-auth/topics/${tenant}/${namespace}/${topic}/permissions`,
+        { params: { persistent } }
+      );
+      return data;
+    },
+    enabled: !!tenant && !!namespace && !!topic,
+  });
+}
+
+export function useGrantTopicPermission() {
+  const queryClient = useQueryClient();
+  return useMutation<SuccessResponse, Error, { tenant: string; namespace: string; topic: string; role: string; actions: string[]; persistent?: boolean }>({
+    mutationFn: async ({ tenant, namespace, topic, role, actions, persistent = true }) => {
+      const { data } = await api.post<SuccessResponse>(
+        `/api/v1/pulsar-auth/topics/${tenant}/${namespace}/${topic}/permissions`,
+        { role, actions },
+        { params: { persistent } }
+      );
+      return data;
+    },
+    onSuccess: (_, { tenant, namespace, topic }) => {
+      queryClient.invalidateQueries({ queryKey: pulsarAuthKeys.topicPermissions(tenant, namespace, topic) });
+    },
+  });
+}
+
+export function useRevokeTopicPermission() {
+  const queryClient = useQueryClient();
+  return useMutation<SuccessResponse, Error, { tenant: string; namespace: string; topic: string; role: string; persistent?: boolean }>({
+    mutationFn: async ({ tenant, namespace, topic, role, persistent = true }) => {
+      const { data } = await api.delete<SuccessResponse>(
+        `/api/v1/pulsar-auth/topics/${tenant}/${namespace}/${topic}/permissions/${role}`,
+        { params: { persistent } }
+      );
+      return data;
+    },
+    onSuccess: (_, { tenant, namespace, topic }) => {
+      queryClient.invalidateQueries({ queryKey: pulsarAuthKeys.topicPermissions(tenant, namespace, topic) });
+    },
+  });
+}
+
+// Broker Config Hooks
+export function useBrokerConfig() {
+  return useQuery<BrokerConfigResponse>({
+    queryKey: pulsarAuthKeys.brokerConfig,
+    queryFn: async () => {
+      const { data } = await api.get<BrokerConfigResponse>('/api/v1/pulsar-auth/broker/config');
+      return data;
+    },
+  });
+}
+
+export function useUpdateBrokerConfig() {
+  const queryClient = useQueryClient();
+  return useMutation<SuccessResponse, Error, { configName: string; value: string }>({
+    mutationFn: async ({ configName, value }) => {
+      const { data } = await api.post<SuccessResponse>(
+        `/api/v1/pulsar-auth/broker/config/${configName}`,
+        { value }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pulsarAuthKeys.brokerConfig });
+      queryClient.invalidateQueries({ queryKey: pulsarAuthKeys.status });
+    },
+  });
+}
+
+export function useDeleteBrokerConfig() {
+  const queryClient = useQueryClient();
+  return useMutation<SuccessResponse, Error, string>({
+    mutationFn: async (configName) => {
+      const { data } = await api.delete<SuccessResponse>(`/api/v1/pulsar-auth/broker/config/${configName}`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pulsarAuthKeys.brokerConfig });
+      queryClient.invalidateQueries({ queryKey: pulsarAuthKeys.status });
+    },
+  });
+}
+
+// RBAC Sync Hooks
+export function useRbacDiff(tenant: string, namespace: string) {
+  return useQuery<SyncDiffResponse>({
+    queryKey: pulsarAuthKeys.rbacDiff(tenant, namespace),
+    queryFn: async () => {
+      const { data } = await api.get<SyncDiffResponse>(
+        `/api/v1/pulsar-auth/rbac-sync/namespaces/${tenant}/${namespace}/diff`
+      );
+      return data;
+    },
+    enabled: !!tenant && !!namespace,
+  });
+}
+
+export function useRbacSyncPreview(tenant: string, namespace: string, direction?: string) {
+  return useQuery<SyncPreviewResponse>({
+    queryKey: [...pulsarAuthKeys.rbacPreview(tenant, namespace), direction],
+    queryFn: async () => {
+      const { data } = await api.get<SyncPreviewResponse>(
+        `/api/v1/pulsar-auth/rbac-sync/namespaces/${tenant}/${namespace}/preview`,
+        { params: direction ? { direction } : undefined }
+      );
+      return data;
+    },
+    enabled: !!tenant && !!namespace,
+  });
+}
+
+export function useRbacSync() {
+  const queryClient = useQueryClient();
+  return useMutation<SyncResultResponse, Error, { tenant: string; namespace: string; direction?: string; dryRun?: boolean }>({
+    mutationFn: async ({ tenant, namespace, direction, dryRun = true }) => {
+      const { data } = await api.post<SyncResultResponse>(
+        `/api/v1/pulsar-auth/rbac-sync/namespaces/${tenant}/${namespace}`,
+        { direction, dry_run: dryRun }
+      );
+      return data;
+    },
+    onSuccess: (_, { tenant, namespace }) => {
+      queryClient.invalidateQueries({ queryKey: pulsarAuthKeys.rbacDiff(tenant, namespace) });
+      queryClient.invalidateQueries({ queryKey: pulsarAuthKeys.rbacPreview(tenant, namespace) });
+      queryClient.invalidateQueries({ queryKey: pulsarAuthKeys.namespacePermissions(tenant, namespace) });
+    },
+  });
+}

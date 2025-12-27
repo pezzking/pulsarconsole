@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, PulsarConnectionError, ValidationError
 from app.core.logging import get_logger
-from app.models.environment import AuthMode, Environment
+from app.models.environment import AuthMode, Environment, RBACSyncMode
 from app.repositories.environment import EnvironmentRepository
 from app.services.pulsar_admin import PulsarAdminService
 
@@ -100,7 +100,10 @@ class EnvironmentService:
         admin_url: str,
         auth_mode: AuthMode = AuthMode.none,
         token: str | None = None,
+        superuser_token: str | None = None,
         ca_bundle_ref: str | None = None,
+        rbac_enabled: bool = False,
+        rbac_sync_mode: RBACSyncMode = RBACSyncMode.console_only,
         validate_connectivity: bool = True,
     ) -> Environment:
         """Create a new environment configuration."""
@@ -132,7 +135,10 @@ class EnvironmentService:
             admin_url=admin_url,
             auth_mode=auth_mode,
             token=token,
+            superuser_token=superuser_token,
             ca_bundle_ref=ca_bundle_ref,
+            rbac_enabled=rbac_enabled,
+            rbac_sync_mode=rbac_sync_mode,
         )
 
         # Set as active if first environment
@@ -149,7 +155,10 @@ class EnvironmentService:
         admin_url: str | None = None,
         auth_mode: AuthMode | None = None,
         token: str | None = None,
+        superuser_token: str | None = None,
         ca_bundle_ref: str | None = None,
+        rbac_enabled: bool | None = None,
+        rbac_sync_mode: RBACSyncMode | None = None,
         validate_connectivity: bool = True,
     ) -> Environment:
         """Update environment configuration."""
@@ -181,7 +190,10 @@ class EnvironmentService:
             admin_url=admin_url,
             auth_mode=auth_mode,
             token=token,
+            superuser_token=superuser_token,
             ca_bundle_ref=ca_bundle_ref,
+            rbac_enabled=rbac_enabled,
+            rbac_sync_mode=rbac_sync_mode,
         )
 
         logger.info("Environment updated", name=name)
@@ -201,3 +213,27 @@ class EnvironmentService:
             raise NotFoundError("environment", "default")
 
         return PulsarAdminService(admin_url=env.admin_url, auth_token=token)
+
+    async def get_superuser_pulsar_client(self) -> PulsarAdminService:
+        """Get Pulsar admin client with superuser token for auth management.
+
+        This uses the superuser token if available, otherwise falls back to
+        the regular token.
+        """
+        env = await self.get_environment()
+        if env is None:
+            raise NotFoundError("environment", "default")
+
+        token = self.repository.get_decrypted_superuser_token(env)
+        return PulsarAdminService(admin_url=env.admin_url, auth_token=token)
+
+    async def get_environment_with_superuser_token(
+        self,
+    ) -> tuple[Environment | None, str | None]:
+        """Get environment with decrypted superuser token."""
+        env = await self.get_environment()
+        if env is None:
+            return None, None
+
+        token = self.repository.get_decrypted_superuser_token(env)
+        return env, token

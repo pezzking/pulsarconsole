@@ -596,6 +596,125 @@ class PulsarAdminService:
         self._handle_response(response, "subscription")
 
     # -------------------------------------------------------------------------
+    # Namespace Permission operations
+    # -------------------------------------------------------------------------
+
+    async def get_namespace_permissions(
+        self,
+        tenant: str,
+        namespace: str,
+    ) -> dict[str, list[str]]:
+        """Get permissions for a namespace.
+
+        Returns a dict mapping roles to their permissions (produce, consume, functions, etc).
+        """
+        response = await self._request(
+            "GET",
+            f"/admin/v2/namespaces/{tenant}/{namespace}/permissions",
+        )
+        return self._handle_response(response, "namespace-permissions")
+
+    async def grant_namespace_permission(
+        self,
+        tenant: str,
+        namespace: str,
+        role: str,
+        actions: list[str],
+    ) -> None:
+        """Grant permissions to a role on a namespace.
+
+        Args:
+            tenant: Tenant name
+            namespace: Namespace name
+            role: Role to grant permissions to
+            actions: List of actions to grant (produce, consume, functions, packages, sinks, sources)
+        """
+        response = await self._request(
+            "POST",
+            f"/admin/v2/namespaces/{tenant}/{namespace}/permissions/{role}",
+            json=actions,
+        )
+        self._handle_response(response, "namespace-permissions")
+
+    async def revoke_namespace_permission(
+        self,
+        tenant: str,
+        namespace: str,
+        role: str,
+    ) -> None:
+        """Revoke all permissions from a role on a namespace."""
+        response = await self._request(
+            "DELETE",
+            f"/admin/v2/namespaces/{tenant}/{namespace}/permissions/{role}",
+        )
+        self._handle_response(response, "namespace-permissions")
+
+    # -------------------------------------------------------------------------
+    # Topic Permission operations
+    # -------------------------------------------------------------------------
+
+    async def get_topic_permissions(
+        self,
+        tenant: str,
+        namespace: str,
+        topic: str,
+        persistent: bool = True,
+    ) -> dict[str, list[str]]:
+        """Get permissions for a topic.
+
+        Returns a dict mapping roles to their permissions.
+        """
+        topic_type = "persistent" if persistent else "non-persistent"
+        response = await self._request(
+            "GET",
+            f"/admin/v2/{topic_type}/{tenant}/{namespace}/{topic}/permissions",
+        )
+        return self._handle_response(response, "topic-permissions")
+
+    async def grant_topic_permission(
+        self,
+        tenant: str,
+        namespace: str,
+        topic: str,
+        role: str,
+        actions: list[str],
+        persistent: bool = True,
+    ) -> None:
+        """Grant permissions to a role on a topic.
+
+        Args:
+            tenant: Tenant name
+            namespace: Namespace name
+            topic: Topic name
+            role: Role to grant permissions to
+            actions: List of actions to grant (produce, consume)
+            persistent: Whether the topic is persistent
+        """
+        topic_type = "persistent" if persistent else "non-persistent"
+        response = await self._request(
+            "POST",
+            f"/admin/v2/{topic_type}/{tenant}/{namespace}/{topic}/permissions/{role}",
+            json=actions,
+        )
+        self._handle_response(response, "topic-permissions")
+
+    async def revoke_topic_permission(
+        self,
+        tenant: str,
+        namespace: str,
+        topic: str,
+        role: str,
+        persistent: bool = True,
+    ) -> None:
+        """Revoke all permissions from a role on a topic."""
+        topic_type = "persistent" if persistent else "non-persistent"
+        response = await self._request(
+            "DELETE",
+            f"/admin/v2/{topic_type}/{tenant}/{namespace}/{topic}/permissions/{role}",
+        )
+        self._handle_response(response, "topic-permissions")
+
+    # -------------------------------------------------------------------------
     # Broker operations
     # -------------------------------------------------------------------------
 
@@ -750,6 +869,85 @@ class PulsarAdminService:
             return response.status_code == 200
         except Exception:
             return False
+
+    # -------------------------------------------------------------------------
+    # Broker Dynamic Configuration operations
+    # -------------------------------------------------------------------------
+
+    async def get_all_dynamic_config(self) -> dict[str, str]:
+        """Get all dynamic broker configuration values.
+
+        Returns all dynamic configuration values that have been set.
+        """
+        response = await self._request("GET", "/admin/v2/brokers/configuration/values")
+        return self._handle_response(response, "dynamic-config")
+
+    async def get_dynamic_config_names(self) -> list[str]:
+        """Get all available dynamic configuration names."""
+        response = await self._request("GET", "/admin/v2/brokers/configuration")
+        return self._handle_response(response, "dynamic-config-names")
+
+    async def update_dynamic_config(
+        self,
+        config_name: str,
+        config_value: str,
+    ) -> None:
+        """Update a dynamic broker configuration.
+
+        Args:
+            config_name: Name of the configuration
+            config_value: Value to set
+        """
+        response = await self._request(
+            "POST",
+            f"/admin/v2/brokers/configuration/{config_name}/{config_value}",
+        )
+        self._handle_response(response, "dynamic-config")
+
+    async def delete_dynamic_config(self, config_name: str) -> None:
+        """Delete/reset a dynamic broker configuration to default."""
+        response = await self._request(
+            "DELETE",
+            f"/admin/v2/brokers/configuration/{config_name}",
+        )
+        self._handle_response(response, "dynamic-config")
+
+    async def get_auth_status(self) -> dict[str, Any]:
+        """Get current authentication/authorization status from broker.
+
+        Returns parsed auth configuration including:
+        - authenticationEnabled
+        - authorizationEnabled
+        - authenticationProviders
+        - superUserRoles
+        """
+        runtime_config = await self.get_broker_runtime_config()
+
+        auth_keys = [
+            "authenticationEnabled",
+            "authorizationEnabled",
+            "authenticationProviders",
+            "authorizationProvider",
+            "superUserRoles",
+            "brokerClientAuthenticationPlugin",
+            "anonymousUserRole",
+            "tokenSecretKey",
+            "tokenPublicKey",
+        ]
+
+        auth_config = {}
+        for key in auth_keys:
+            if key in runtime_config:
+                value = runtime_config[key]
+                # Parse boolean strings
+                if value in ("true", "false"):
+                    value = value == "true"
+                # Parse comma-separated lists
+                elif "," in str(value):
+                    value = [v.strip() for v in str(value).split(",") if v.strip()]
+                auth_config[key] = value
+
+        return auth_config
 
     # -------------------------------------------------------------------------
     # Message operations
