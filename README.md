@@ -141,6 +141,116 @@ docker compose --profile full up -d
 
 ---
 
+## Docker Hub Deployment
+
+Pre-built Docker images are available on Docker Hub for quick deployment.
+
+### Pull Images
+
+```bash
+docker pull lvms/pulsarconsole-frontend:latest
+docker pull lvms/pulsarconsole-backend:latest
+```
+
+### Quick Start with Docker Compose
+
+Create a `docker-compose.yml` file:
+
+```yaml
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pulsar
+      POSTGRES_PASSWORD: pulsar
+      POSTGRES_DB: pulsarconsole
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulsar"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Pulsar Console Backend API
+  backend:
+    image: lvms/pulsarconsole-backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://pulsar:pulsar@postgres:5432/pulsarconsole
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: change-me-in-production
+      OIDC_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Pulsar Console Frontend
+  frontend:
+    image: lvms/pulsarconsole-frontend:latest
+    ports:
+      - "80:80"
+    environment:
+      VITE_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+```
+
+### Start the Stack
+
+```bash
+docker compose up -d
+```
+
+### Access the Console
+
+Open http://localhost in your browser.
+
+### Configure Your First Environment
+
+1. Go to **Settings > Environments**
+2. Click **Add Environment**
+3. Enter your Pulsar Admin URL (e.g., `http://pulsar:8080` or `https://pulsar.example.com:8443`)
+4. Configure authentication if required
+5. Click **Test Connection** and **Save**
+
+### Production Considerations
+
+For production deployments:
+
+```yaml
+backend:
+  environment:
+    SECRET_KEY: <generate-a-secure-random-key>
+    OIDC_ENABLED: "true"
+    OIDC_ISSUER_URL: https://your-idp.example.com
+    OIDC_CLIENT_ID: pulsar-console
+    OIDC_USE_PKCE: "true"
+```
+
+Generate a secure secret key:
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+---
+
 ## Authentication Configuration
 
 Pulsar Console has **two independent authentication layers**:
