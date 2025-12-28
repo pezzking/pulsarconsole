@@ -107,6 +107,7 @@ export function useCreateEnvironment() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.environment });
+      queryClient.invalidateQueries({ queryKey: queryKeys.environments });
     },
   });
 }
@@ -710,6 +711,7 @@ export function useAuditEvents(filters?: {
       });
       return data.events || [];
     },
+    refetchInterval: 10000, // Refresh every 10 seconds
   });
 }
 

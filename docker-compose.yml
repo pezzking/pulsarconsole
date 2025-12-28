@@ -63,10 +63,32 @@ services:
       - "8080:8080"   # Pulsar Admin REST API
     environment:
       PULSAR_MEM: "-Xms512m -Xmx512m -XX:MaxDirectMemorySize=256m"
+      # ========================================================================
+      # Authentication & Authorization
+      # ========================================================================
+      PULSAR_PREFIX_authenticationEnabled: "true"
+      PULSAR_PREFIX_authorizationEnabled: "true"
+      PULSAR_PREFIX_authenticationProviders: "org.apache.pulsar.broker.authentication.AuthenticationProviderToken"
+      # ========================================================================
+      # JWT Token Configuration (Public Key)
+      # ========================================================================
+      PULSAR_PREFIX_tokenPublicKey: "file:///pulsar/conf/public.key"
+      PULSAR_PREFIX_tokenAuthClaim: "sub"
+      # ========================================================================
+      # Superuser Roles
+      # ========================================================================
+      PULSAR_PREFIX_superUserRoles: "admin"
+      # ========================================================================
+      # Broker Client Authentication (for internal communication)
+      # ========================================================================
+      PULSAR_PREFIX_brokerClientAuthenticationPlugin: "org.apache.pulsar.client.impl.auth.AuthenticationToken"
+      PULSAR_PREFIX_brokerClientAuthenticationParameters: "file:///pulsar/conf/admin-token.txt"
     volumes:
       - pulsar_data:/pulsar/data
+      - ./pulsar-conf/public.key:/pulsar/conf/public.key:ro
+      - ./pulsar-conf/admin-token.txt:/pulsar/conf/admin-token.txt:ro
     healthcheck:
-      test: ["CMD", "bin/pulsar-admin", "brokers", "healthcheck"]
+      test: ["CMD", "curl", "-s", "-f", "-H", "Authorization: Bearer $$(cat /pulsar/conf/admin-token.txt)", "http://localhost:8080/admin/v2/brokers/healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 5

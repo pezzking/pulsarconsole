@@ -2,8 +2,11 @@
 
 from functools import lru_cache
 from typing import Literal
+import os
+import subprocess
+import json
 
-from pydantic import Field, computed_field
+from pydantic import Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -57,6 +60,13 @@ class Settings(BaseSettings):
     pulsar_auth_token: str | None = Field(default=None)
     pulsar_tls_enabled: bool = Field(default=False)
     pulsar_tls_allow_insecure: bool = Field(default=True)
+
+    # Pulsar OAuth2 (Machine-to-Machine)
+    pulsar_auth_enabled: bool = Field(default=False)
+    pulsar_oauth_issuer_url: str | None = Field(default=None)
+    pulsar_oauth_client_id: str | None = Field(default=None)
+    pulsar_oauth_client_secret: str | None = Field(default=None)
+    pulsar_oauth_audience: str | None = Field(default=None)
 
     # Connection settings
     pulsar_connect_timeout: int = Field(default=10)
@@ -153,6 +163,46 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """Check if running in production mode."""
         return self.app_env == "production"
+
+    @model_validator(mode="after")
+    def resolve_bws_secrets(self) -> "Settings":
+        """Resolve any values starting with bws:// using environment variables or BWS CLI."""
+        for field_name, value in self.__dict__.items():
+            if isinstance(value, str) and value.startswith("bws://"):
+                # 1. Try environment variable with prefix (set by bws run)
+                # We use the field name in uppercase as per standard env var conventions
+                env_key = f"pulsar-manager-react-{field_name.upper()}"
+                env_value = os.environ.get(env_key)
+
+                if env_value:
+                    setattr(self, field_name, env_value)
+                    continue
+
+                # 2. Try environment variable without prefix (if bws run used non-prefixed keys)
+                env_key_no_prefix = field_name.upper()
+                env_value_no_prefix = os.environ.get(env_key_no_prefix)
+                if env_value_no_prefix and not env_value_no_prefix.startswith("bws://"):
+                    setattr(self, field_name, env_value_no_prefix)
+                    continue
+
+                # 3. Fallback: Call BWS CLI to fetch the secret by ID
+                secret_id = value.replace("bws://", "")
+                try:
+                    # Note: This is slow and should be avoided in production by using 'bws run'
+                    result = subprocess.run(
+                        ["bws", "secret", "get", secret_id],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                        timeout=5
+                    )
+                    secret_data = json.loads(result.stdout)
+                    if "value" in secret_data:
+                        setattr(self, field_name, secret_data["value"])
+                except Exception:
+                    # If resolution fails, the bws:// string remains
+                    pass
+        return self
 
 
 @lru_cache

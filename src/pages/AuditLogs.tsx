@@ -2,11 +2,12 @@ import { motion } from "framer-motion";
 import { RefreshCcw, Download, Search, Filter, Clock, User, Activity, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAuditEvents } from "@/api/hooks";
+import { useAuth } from "@/context/AuthContext";
 import type { AuditEvent } from "@/api/types";
 import { cn } from "@/lib/utils";
 
 const RESOURCE_TYPES = ["all", "tenant", "namespace", "topic", "subscription", "broker"];
-const ACTIONS = ["all", "create", "delete", "update", "read", "publish", "consume"];
+const ACTIONS = ["all", "create", "delete", "update", "read", "publish", "consume", "unload", "compact", "offload"];
 
 function formatTimestamp(timestamp: string): string {
     const date = new Date(timestamp);
@@ -66,10 +67,21 @@ function exportToJSON(events: AuditEvent[], filename: string) {
 }
 
 export default function AuditLogsPage() {
+    const { user } = useAuth();
     const [searchQuery, setSearchQuery] = useState("");
     const [resourceType, setResourceType] = useState("all");
     const [actionFilter, setActionFilter] = useState("all");
+    const [onlyMyEvents, setOnlyMyEvents] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
+
+    const isPrivileged = useMemo(() => {
+        return user?.roles?.some(role =>
+            ["superuser", "admin", "operator", "superuser-role", "admin-role", "operator-role"].includes(role.name)
+        ) ?? false;
+    }, [user]);
+
+    // Enforce "only my events" for non-privileged users
+    const effectiveOnlyMyEvents = !isPrivileged || onlyMyEvents;
 
     const filters = useMemo(() => {
         const f: Record<string, string> = {};
@@ -82,17 +94,27 @@ export default function AuditLogsPage() {
 
     const filteredEvents = useMemo(() => {
         if (!events) return [];
-        if (!searchQuery.trim()) return events;
+        
+        let result = events;
+
+        if (effectiveOnlyMyEvents && user) {
+            result = result.filter(event => 
+                event.user_id === user.id || 
+                (event.user_email && user.email && event.user_email === user.email)
+            );
+        }
+
+        if (!searchQuery.trim()) return result;
 
         const query = searchQuery.toLowerCase();
-        return events.filter(event =>
+        return result.filter(event =>
             event.resource_id.toLowerCase().includes(query) ||
             event.action.toLowerCase().includes(query) ||
             event.resource_type.toLowerCase().includes(query) ||
             (event.user_email?.toLowerCase().includes(query)) ||
             (event.user_id?.toLowerCase().includes(query))
         );
-    }, [events, searchQuery]);
+    }, [events, searchQuery, effectiveOnlyMyEvents, user]);
 
     const handleExport = (format: "csv" | "json") => {
         const timestamp = new Date().toISOString().split("T")[0];
@@ -203,6 +225,27 @@ export default function AuditLogsPage() {
                                     </option>
                                 ))}
                             </select>
+                        </div>
+                        <div className="flex flex-col justify-end pb-1">
+                            <label className={cn(
+                                "flex items-center gap-2 group",
+                                isPrivileged ? "cursor-pointer" : "cursor-not-allowed opacity-70"
+                            )}>
+                                <div className="relative flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={effectiveOnlyMyEvents}
+                                        onChange={(e) => isPrivileged && setOnlyMyEvents(e.target.checked)}
+                                        disabled={!isPrivileged}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-10 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary transition-colors group-hover:bg-white/20"></div>
+                                </div>
+                                <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                                    Only my events
+                                    {!isPrivileged && <span className="text-[10px] ml-2 opacity-50">(Enforced)</span>}
+                                </span>
+                            </label>
                         </div>
                     </motion.div>
                 )}

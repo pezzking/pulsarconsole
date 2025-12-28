@@ -106,8 +106,20 @@ class PulsarAdminService:
         """Get or create HTTP client."""
         if self._client is None or self._client.is_closed:
             headers = {"Accept": "application/json"}
-            if self.auth_token:
-                headers["Authorization"] = f"Bearer {self.auth_token}"
+            
+            # Resolve token if it's a file reference
+            token = self.auth_token
+            if token and token.startswith("file://"):
+                try:
+                    path = token.replace("file://", "")
+                    with open(path, "r") as f:
+                        token = f.read().strip()
+                except Exception as e:
+                    logger.error(f"Failed to read token from file {token}: {e}")
+                    # If reading fails, we'll continue without a token or let it fail at the broker
+            
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
 
             self._client = httpx.AsyncClient(
                 base_url=self.admin_url,
@@ -164,7 +176,7 @@ class PulsarAdminService:
                 self.circuit_breaker.record_success()
                 return response
 
-            except (httpx.ConnectError, httpx.TimeoutException) as e:
+            except (httpx.ConnectError, httpx.TimeoutException, httpx.ReadError, httpx.WriteError) as e:
                 last_error = e
                 self.circuit_breaker.record_failure()
                 logger.warning(
@@ -172,6 +184,7 @@ class PulsarAdminService:
                     attempt=attempt + 1,
                     max_retries=settings.pulsar_max_retries,
                     path=path,
+                    error_type=type(e).__name__,
                     error=str(e),
                 )
 

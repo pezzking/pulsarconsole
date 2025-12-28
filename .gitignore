@@ -46,3 +46,10 @@ ENV/
 # Backend specific
 backend/.env
 backend/*.db
+
+# Pulsar OAuth credentials (contains secrets)
+pulsar-conf/credentials.json
+pulsar-conf/zitadel-key.json
+pulsar-conf/*.json
+pulsar-conf/admin-token.txt
+pulsar-conf/private.key

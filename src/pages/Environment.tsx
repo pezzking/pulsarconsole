@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Settings, CheckCircle, XCircle, Loader2, Wifi, Plus, Pencil, Trash2, Globe, Power } from "lucide-react";
-import { useState } from "react";
+import { Settings, CheckCircle, XCircle, Loader2, Wifi, Plus, Pencil, Trash2, Globe, Power, Eye, EyeOff, Upload } from "lucide-react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 import {
     useEnvironments,
@@ -15,7 +15,7 @@ import type { Environment } from "@/api/types";
 interface EnvironmentFormData {
     name: string;
     admin_url: string;
-    auth_mode: "none" | "token";
+    auth_mode: "none" | "token" | "oidc";
     token: string;
     validate_connectivity: boolean;
 }
@@ -40,6 +40,8 @@ export default function EnvironmentPage() {
     const [editingEnv, setEditingEnv] = useState<Environment | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [formData, setFormData] = useState<EnvironmentFormData>(emptyForm);
+    const [showToken, setShowToken] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [testResult, setTestResult] = useState<{
         success: boolean;
         message: string;
@@ -64,13 +66,33 @@ export default function EnvironmentPage() {
         setFormData({
             name: env.name,
             admin_url: env.admin_url,
-            auth_mode: env.auth_mode as "none" | "token",
+            auth_mode: env.auth_mode as "none" | "token" | "oidc",
             token: "",
             validate_connectivity: true,
         });
         setTestResult(null);
         setEditingEnv(env);
         setShowForm(true);
+    };
+
+    const handleFileRead = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const content = event.target?.result as string;
+            if (content) {
+                setFormData(prev => ({ ...prev, token: content.trim() }));
+                toast.success(`Token loaded from ${file.name}`);
+            }
+        };
+        reader.onerror = () => {
+            toast.error("Failed to read token file");
+        };
+        reader.readAsText(file);
+        // Clear input value so same file can be selected again
+        e.target.value = '';
     };
 
     const handleTest = async () => {
@@ -106,6 +128,7 @@ export default function EnvironmentPage() {
                     data: {
                         admin_url: formData.admin_url.trim(),
                         auth_mode: formData.auth_mode,
+                        oidc_mode: formData.auth_mode === "oidc" ? "passthrough" : "none",
                         token: formData.auth_mode === "token" && formData.token ? formData.token : undefined,
                         validate_connectivity: formData.validate_connectivity,
                     },
@@ -116,6 +139,7 @@ export default function EnvironmentPage() {
                     name: formData.name.trim(),
                     admin_url: formData.admin_url.trim(),
                     auth_mode: formData.auth_mode,
+                    oidc_mode: formData.auth_mode === "oidc" ? "passthrough" : "none",
                     token: formData.auth_mode === "token" ? formData.token : undefined,
                     validate_connectivity: formData.validate_connectivity,
                 });
@@ -317,12 +341,31 @@ export default function EnvironmentPage() {
                                     <label className="block text-sm font-medium mb-2">Authentication</label>
                                     <select
                                         value={formData.auth_mode}
-                                        onChange={(e) => setFormData({ ...formData, auth_mode: e.target.value as "none" | "token" })}
+                                        onChange={(e) => setFormData({ ...formData, auth_mode: e.target.value as "none" | "token" | "oidc" })}
                                         className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-primary"
                                     >
                                         <option value="none">No Authentication</option>
                                         <option value="token">Token Authentication</option>
+                                        <option value="oidc">OIDC Passthrough (Logged-in User)</option>
                                     </select>
+                                    <motion.p
+                                        initial={{ opacity: 0, y: -5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        key={formData.auth_mode}
+                                        className="mt-2 text-xs text-muted-foreground leading-relaxed"
+                                    >
+                                        {formData.auth_mode === "none" && (
+                                            "Ensure that authenticationEnabled and authorizationEnabled are set to false in your Pulsar broker configuration. This mode provides no security."
+                                        )}
+                                        {formData.auth_mode === "token" && (
+                                            "Uses static Pulsar JWT tokens (Symmetric or Asymmetric). The Console will use this fixed token for all administrative actions in this environment."
+                                        )}
+                                        {formData.auth_mode === "oidc" && (
+                                            <>
+                                                Forwards your active OIDC session token to the broker (Supports PKCE). Pulsar must be configured with <code className="bg-white/5 px-1 rounded text-primary">authenticationEnabled: true</code> and <code className="bg-white/5 px-1 rounded text-primary">AuthenticationProviderOAuth2</code>. The broker's <code className="bg-white/5 px-1 rounded text-primary">audience</code> must match your IdP <code className="bg-white/5 px-1 rounded text-primary">client_id</code>.
+                                            </>
+                                        )}
+                                    </motion.p>
                                 </div>
 
                                 {formData.auth_mode === "token" && (
@@ -330,14 +373,49 @@ export default function EnvironmentPage() {
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: "auto" }}
                                     >
-                                        <label className="block text-sm font-medium mb-2">Token</label>
-                                        <input
-                                            type="password"
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-sm font-medium">Token</label>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="file"
+                                                    ref={fileInputRef}
+                                                    onChange={handleFileRead}
+                                                    className="hidden"
+                                                    accept=".txt,.jwt,.key,*"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors font-medium"
+                                                >
+                                                    <Upload size={14} /> Upload File
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowToken(!showToken)}
+                                                    className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors font-medium"
+                                                >
+                                                    {showToken ? (
+                                                        <><EyeOff size={14} /> Hide Token</>
+                                                    ) : (
+                                                        <><Eye size={14} /> Show Token</>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <textarea
                                             value={formData.token}
                                             onChange={(e) => setFormData({ ...formData, token: e.target.value })}
                                             placeholder={editingEnv ? "Leave empty to keep current token" : "Enter your authentication token"}
-                                            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-primary"
+                                            rows={4}
+                                            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-primary font-mono text-xs resize-none leading-relaxed"
+                                            style={{ 
+                                                WebkitTextSecurity: showToken ? 'none' : 'disc',
+                                            } as any}
                                         />
+                                        <p className="text-[10px] text-muted-foreground mt-1">
+                                            Pulsar tokens are typically long strings. Use multi-line paste if needed.
+                                        </p>
                                     </motion.div>
                                 )}
 

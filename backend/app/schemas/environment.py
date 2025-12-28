@@ -19,8 +19,11 @@ class EnvironmentBase(BaseSchema):
 class EnvironmentCreate(EnvironmentBase):
     """Schema for creating an environment."""
 
-    auth_mode: Literal["none", "token", "oauth2"] = Field(
+    auth_mode: Literal["none", "token", "oidc", "tls"] = Field(
         default="none", description="Authentication mode"
+    )
+    oidc_mode: Literal["none", "console_only", "passthrough"] = Field(
+        default="none", description="OIDC operation mode"
     )
     token: str | None = Field(default=None, description="Authentication token")
     superuser_token: str | None = Field(
@@ -53,8 +56,11 @@ class EnvironmentUpdate(BaseSchema):
     """Schema for updating an environment."""
 
     admin_url: str | None = Field(default=None, description="Pulsar admin URL")
-    auth_mode: Literal["none", "token", "oauth2"] | None = Field(
+    auth_mode: Literal["none", "token", "oidc", "tls"] | None = Field(
         default=None, description="Authentication mode"
+    )
+    oidc_mode: Literal["none", "console_only", "passthrough"] | None = Field(
+        default=None, description="OIDC operation mode"
     )
     token: str | None = Field(default=None, description="Authentication token")
     superuser_token: str | None = Field(
@@ -80,6 +86,7 @@ class EnvironmentResponse(EnvironmentBase):
 
     id: UUID
     auth_mode: str
+    oidc_mode: str = Field(default="none", description="OIDC operation mode")
     has_token: bool = Field(description="Whether token is configured")
     has_superuser_token: bool = Field(
         default=False, description="Whether superuser token is configured"

@@ -4,7 +4,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decrypt_value, encrypt_value
-from app.models.environment import AuthMode, Environment, RBACSyncMode
+from app.models.environment import AuthMode, Environment, OIDCMode, RBACSyncMode
 from app.repositories.base import BaseRepository
 
 
@@ -26,6 +26,7 @@ class EnvironmentRepository(BaseRepository[Environment]):
         name: str,
         admin_url: str,
         auth_mode: AuthMode = AuthMode.none,
+        oidc_mode: OIDCMode = OIDCMode.none,
         token: str | None = None,
         superuser_token: str | None = None,
         ca_bundle_ref: str | None = None,
@@ -40,6 +41,7 @@ class EnvironmentRepository(BaseRepository[Environment]):
             name=name,
             admin_url=admin_url,
             auth_mode=auth_mode,
+            oidc_mode=oidc_mode,
             token_encrypted=encrypted_token,
             superuser_token_encrypted=encrypted_superuser_token,
             ca_bundle_ref=ca_bundle_ref,
@@ -52,6 +54,7 @@ class EnvironmentRepository(BaseRepository[Environment]):
         name: str,
         admin_url: str | None = None,
         auth_mode: AuthMode | None = None,
+        oidc_mode: OIDCMode | None = None,
         token: str | None = None,
         superuser_token: str | None = None,
         ca_bundle_ref: str | None = None,
@@ -67,6 +70,8 @@ class EnvironmentRepository(BaseRepository[Environment]):
             env.admin_url = admin_url
         if auth_mode is not None:
             env.auth_mode = auth_mode
+        if oidc_mode is not None:
+            env.oidc_mode = oidc_mode
         if token is not None:
             env.token_encrypted = encrypt_value(token)
         if superuser_token is not None:

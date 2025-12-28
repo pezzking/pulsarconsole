@@ -105,38 +105,47 @@ export default function TopicsPage() {
                     className="glass p-6 rounded-2xl"
                 >
                     <h3 className="text-lg font-semibold mb-4">Create New Topic</h3>
-                    <div className="flex gap-4 flex-wrap">
-                        <input
-                            type="text"
-                            value={newTopicName}
-                            onChange={(e) => setNewTopicName(e.target.value)}
-                            placeholder="Topic name"
-                            className="flex-1 min-w-[200px] px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-primary"
-                        />
-                        <input
-                            type="number"
-                            value={partitions}
-                            onChange={(e) => setPartitions(parseInt(e.target.value) || 0)}
-                            placeholder="Partitions"
-                            min="0"
-                            className="w-32 px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-primary"
-                        />
-                        <button
-                            onClick={handleCreate}
-                            disabled={createTopic.isPending}
-                            className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
-                        >
-                            {createTopic.isPending ? "Creating..." : "Create"}
-                        </button>
-                        <button
-                            onClick={() => setShowCreate(false)}
-                            className="px-6 py-2 bg-white/10 rounded-lg hover:bg-white/20"
-                        >
-                            Cancel
-                        </button>
+                    <div className="flex gap-6 items-end flex-wrap">
+                        <div className="flex-1 min-w-[200px] space-y-1.5">
+                            <label className="text-sm font-medium text-muted-foreground ml-1">Topic Name</label>
+                            <input
+                                type="text"
+                                value={newTopicName}
+                                onChange={(e) => setNewTopicName(e.target.value)}
+                                placeholder="e.g. my-awesome-topic"
+                                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-primary transition-colors"
+                            />
+                        </div>
+                        <div className="w-32 space-y-1.5">
+                            <label className="text-sm font-medium text-muted-foreground ml-1">Partitions</label>
+                            <input
+                                type="number"
+                                value={partitions}
+                                onChange={(e) => setPartitions(parseInt(e.target.value) || 0)}
+                                placeholder="0"
+                                min="0"
+                                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-primary transition-colors"
+                            />
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleCreate}
+                                disabled={createTopic.isPending}
+                                className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 font-semibold shadow-lg shadow-primary/10 transition-all active:scale-95"
+                            >
+                                {createTopic.isPending ? "Creating..." : "Create"}
+                            </button>
+                            <button
+                                onClick={() => setShowCreate(false)}
+                                className="px-6 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                        Set partitions to 0 for a non-partitioned topic.
+                    <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5 ml-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
+                        Use <code className="text-primary/80">0</code> for a standard topic. Increase partitions for higher throughput across multiple brokers.
                     </p>
                 </motion.div>
             )}

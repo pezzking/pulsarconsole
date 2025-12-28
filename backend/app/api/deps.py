@@ -70,12 +70,23 @@ async def get_cache() -> CacheService:
     return cache_service
 
 
+def _extract_token(request: Request) -> str | None:
+    """Extract token from request header or cookie."""
+    from app.config import settings
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        return auth_header[7:]
+    return request.cookies.get(settings.session_cookie_name)
+
+
 async def get_pulsar_client(
+    request: Request,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> AsyncGenerator[PulsarAdminService, None]:
     """Get Pulsar admin client for the configured environment."""
+    user_token = _extract_token(request)
     env_service = EnvironmentService(session)
-    client = await env_service.get_pulsar_client()
+    client = await env_service.get_pulsar_client(user_token=user_token)
     try:
         yield client
     finally:

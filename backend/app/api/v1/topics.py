@@ -167,10 +167,22 @@ async def unload_topic(
     topic: str,
     _user: CurrentApprovedUser,
     service: TopicSvc,
+    audit: AuditSvc,
+    request_info: RequestInfo,
     persistent: bool = Query(default=True, description="Persistent topic"),
 ) -> SuccessResponse:
     """Unload a topic from the broker."""
     await service.unload_topic(tenant, namespace, topic, persistent=persistent)
+
+    # Log audit event
+    persistence = "persistent" if persistent else "non-persistent"
+    await audit.log_event(
+        action="unload",
+        resource_type=ResourceType.TOPIC,
+        resource_id=f"{persistence}://{tenant}/{namespace}/{topic}",
+        **request_info,
+    )
+
     return SuccessResponse(message=f"Topic '{topic}' unloaded")
 
 
@@ -181,10 +193,22 @@ async def compact_topic(
     topic: str,
     _user: CurrentApprovedUser,
     service: TopicSvc,
+    audit: AuditSvc,
+    request_info: RequestInfo,
     persistent: bool = Query(default=True, description="Persistent topic"),
 ) -> SuccessResponse:
     """Trigger compaction on a topic."""
     await service.compact_topic(tenant, namespace, topic, persistent=persistent)
+
+    # Log audit event
+    persistence = "persistent" if persistent else "non-persistent"
+    await audit.log_event(
+        action="compact",
+        resource_type=ResourceType.TOPIC,
+        resource_id=f"{persistence}://{tenant}/{namespace}/{topic}",
+        **request_info,
+    )
+
     return SuccessResponse(message=f"Compaction triggered for topic '{topic}'")
 
 
@@ -195,8 +219,20 @@ async def offload_topic(
     topic: str,
     _user: CurrentApprovedUser,
     service: TopicSvc,
+    audit: AuditSvc,
+    request_info: RequestInfo,
     persistent: bool = Query(default=True, description="Persistent topic"),
 ) -> SuccessResponse:
     """Trigger offload on a topic."""
     await service.offload_topic(tenant, namespace, topic, persistent=persistent)
+
+    # Log audit event
+    persistence = "persistent" if persistent else "non-persistent"
+    await audit.log_event(
+        action="offload",
+        resource_type=ResourceType.TOPIC,
+        resource_id=f"{persistence}://{tenant}/{namespace}/{topic}",
+        **request_info,
+    )
+
     return SuccessResponse(message=f"Offload triggered for topic '{topic}'")

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, PulsarConnectionError, ValidationError
 from app.core.logging import get_logger
-from app.models.environment import AuthMode, Environment, RBACSyncMode
+from app.models.environment import AuthMode, Environment, OIDCMode, RBACSyncMode
 from app.repositories.environment import EnvironmentRepository
 from app.services.pulsar_admin import PulsarAdminService
 
@@ -39,23 +39,57 @@ class EnvironmentService:
                 value=url,
             )
 
-    async def test_connectivity(self, admin_url: str, token: str | None = None) -> bool:
-        """Test connectivity to Pulsar cluster."""
+    async def test_connectivity(self, admin_url: str, token: str | None = None) -> tuple[bool, str]:
+        """Test connectivity to Pulsar cluster.
+
+        Returns:
+            Tuple of (success, message)
+        """
         client = PulsarAdminService(admin_url=admin_url, auth_token=token)
         try:
+            # Try healthcheck first
             is_healthy = await client.healthcheck()
-            if not is_healthy:
-                # Try to get clusters as fallback
+            if is_healthy:
+                return True, "Connection successful"
+
+            # Fallback: try to list clusters
+            try:
                 clusters = await client.get_clusters()
-                return len(clusters) > 0
-            return True
+                if clusters:
+                    return True, "Connection successful"
+            except Exception as e:
+                # If healthcheck failed and clusters failed, use the cluster error
+                raise e
+
+            return False, "Broker returned unhealthy status"
+        except PulsarConnectionError as e:
+            msg = str(e)
+            orig = str(e.original_error) if e.original_error else ""
+            
+            if "401" in msg or "Unauthorized" in msg or "401" in orig:
+                return False, "Authentication failed (401 Unauthorized). The broker rejected your token."
+            if "403" in msg or "Forbidden" in msg or "403" in orig:
+                return False, "Access denied (403 Forbidden). Your token lacks the required permissions."
+            
+            if "ReadError" in msg or "ReadError" in orig:
+                return False, "Broker connection was lost while reading data (ReadError). Is the broker still starting up?"
+            if "ConnectError" in msg or "ConnectError" in orig:
+                return False, f"Could not connect to the broker at {admin_url}. Is it running and accessible?"
+            
+            if "No such file or directory" in msg or "No such file or directory" in orig:
+                return False, f"Token file not found. Please check the path: {token}"
+                
+            return False, f"Connection error: {msg} {orig}".strip()
         except Exception as e:
+            error_type = type(e).__name__
+            error_msg = str(e)
             logger.warning(
                 "Connectivity test failed",
                 admin_url=admin_url,
-                error=str(e),
+                error_type=error_type,
+                error=error_msg,
             )
-            return False
+            return False, f"Unexpected {error_type}: {error_msg}" if error_msg else f"Unexpected {error_type}"
         finally:
             await client.close()
 
@@ -99,6 +133,7 @@ class EnvironmentService:
         name: str,
         admin_url: str,
         auth_mode: AuthMode = AuthMode.none,
+        oidc_mode: OIDCMode = OIDCMode.none,
         token: str | None = None,
         superuser_token: str | None = None,
         ca_bundle_ref: str | None = None,
@@ -118,12 +153,15 @@ class EnvironmentService:
 
         # Test connectivity before saving
         if validate_connectivity:
-            is_connected = await self.test_connectivity(admin_url, token)
-            if not is_connected:
-                raise PulsarConnectionError(
-                    "Cannot connect to Pulsar cluster. Please verify the URL and credentials.",
-                    url=admin_url,
-                )
+            # For OIDC passthrough, we can't test connectivity easily during creation
+            # without a user token. We'll skip or allow it.
+            if auth_mode != AuthMode.oidc or oidc_mode != OIDCMode.passthrough:
+                is_connected, error_msg = await self.test_connectivity(admin_url, token)
+                if not is_connected:
+                    raise PulsarConnectionError(
+                        f"Cannot connect to Pulsar cluster: {error_msg}",
+                        url=admin_url,
+                    )
 
         # Check if this is the first environment (should be active by default)
         existing = await self.repository.get_all(limit=1)
@@ -134,6 +172,7 @@ class EnvironmentService:
             name=name,
             admin_url=admin_url,
             auth_mode=auth_mode,
+            oidc_mode=oidc_mode,
             token=token,
             superuser_token=superuser_token,
             ca_bundle_ref=ca_bundle_ref,
@@ -154,6 +193,7 @@ class EnvironmentService:
         name: str,
         admin_url: str | None = None,
         auth_mode: AuthMode | None = None,
+        oidc_mode: OIDCMode | None = None,
         token: str | None = None,
         superuser_token: str | None = None,
         ca_bundle_ref: str | None = None,
@@ -174,21 +214,25 @@ class EnvironmentService:
         # Determine final values for connectivity test
         final_url = admin_url or env.admin_url
         final_token = token if token is not None else self.repository.get_decrypted_token(env)
+        final_auth_mode = auth_mode if auth_mode is not None else env.auth_mode
+        final_oidc_mode = oidc_mode if oidc_mode is not None else env.oidc_mode
 
         # Test connectivity before saving
         if validate_connectivity:
-            is_connected = await self.test_connectivity(final_url, final_token)
-            if not is_connected:
-                raise PulsarConnectionError(
-                    "Cannot connect to Pulsar cluster. Please verify the URL and credentials.",
-                    url=final_url,
-                )
+            if final_auth_mode != AuthMode.oidc or final_oidc_mode != OIDCMode.passthrough:
+                is_connected, error_msg = await self.test_connectivity(final_url, final_token)
+                if not is_connected:
+                    raise PulsarConnectionError(
+                        f"Cannot connect to Pulsar cluster: {error_msg}",
+                        url=final_url,
+                    )
 
         # Update
         env = await self.repository.update_with_encryption(
             name=name,
             admin_url=admin_url,
             auth_mode=auth_mode,
+            oidc_mode=oidc_mode,
             token=token,
             superuser_token=superuser_token,
             ca_bundle_ref=ca_bundle_ref,
@@ -206,11 +250,15 @@ class EnvironmentService:
             logger.info("Environment deleted", name=name)
         return result
 
-    async def get_pulsar_client(self) -> PulsarAdminService:
+    async def get_pulsar_client(self, user_token: str | None = None) -> PulsarAdminService:
         """Get Pulsar admin client for current environment."""
         env, token = await self.get_environment_with_token()
         if env is None:
             raise NotFoundError("environment", "default")
+
+        # If OIDC passthrough is enabled, use the user's token
+        if env.auth_mode == AuthMode.oidc and env.oidc_mode == OIDCMode.passthrough and user_token:
+            token = user_token
 
         return PulsarAdminService(admin_url=env.admin_url, auth_token=token)
 
