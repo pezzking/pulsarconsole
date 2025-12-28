@@ -29,9 +29,10 @@ class BrokerService:
 
     async def get_brokers(self, use_cache: bool = True) -> list[dict[str, Any]]:
         """Get all active brokers in the cluster."""
+        env_id = self.pulsar.environment_id or "default"
         # Try cache first
         if use_cache:
-            cached = await self.cache.get_brokers()
+            cached = await self.cache.get_brokers(env_id)
             if cached:
                 return cached
 
@@ -66,12 +67,13 @@ class BrokerService:
             brokers.append(broker_data)
 
         # Cache result
-        await self.cache.set_brokers(brokers)
+        await self.cache.set_brokers(env_id, brokers)
 
         return brokers
 
     async def get_broker(self, broker_url: str) -> dict[str, Any]:
         """Get detailed stats for a specific broker."""
+        env_id = self.pulsar.environment_id or "default"
         # Verify broker exists
         broker_urls = await self.pulsar.get_active_brokers()
         if broker_url not in broker_urls:
@@ -84,7 +86,7 @@ class BrokerService:
             stats = {}
 
         # Get cached broker stats
-        cached_stats = await self.cache.get_broker_stats(broker_url)
+        cached_stats = await self.cache.get_broker_stats(env_id, broker_url)
         if cached_stats:
             stats.update(cached_stats)
 

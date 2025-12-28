@@ -62,10 +62,11 @@ class SubscriptionService:
         """Get all subscriptions for a topic."""
         persistence = "persistent" if persistent else "non-persistent"
         full_topic = f"{persistence}://{tenant}/{namespace}/{topic}"
+        env_id = self.pulsar.environment_id or "default"
 
         # Try cache first
         if use_cache:
-            cached = await self.cache.get_subscriptions(full_topic)
+            cached = await self.cache.get_subscriptions(env_id, full_topic)
             if cached:
                 return cached
 
@@ -110,7 +111,7 @@ class SubscriptionService:
             subscriptions.append(subscription_data)
 
         # Cache result
-        await self.cache.set_subscriptions(full_topic, subscriptions)
+        await self.cache.set_subscriptions(env_id, full_topic, subscriptions)
 
         return subscriptions
 
@@ -192,7 +193,8 @@ class SubscriptionService:
         )
 
         # Invalidate cache
-        await self.cache.invalidate_subscriptions(full_topic)
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_subscriptions(env_id, full_topic)
 
         logger.info(
             "Subscription created",
@@ -226,7 +228,8 @@ class SubscriptionService:
         await self.pulsar.delete_subscription(full_topic, subscription, force=force)
 
         # Invalidate cache
-        await self.cache.invalidate_subscriptions(full_topic)
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_subscriptions(env_id, full_topic)
 
         logger.info(
             "Subscription deleted",
@@ -257,7 +260,8 @@ class SubscriptionService:
         await self.pulsar.skip_messages(full_topic, subscription, count)
 
         # Invalidate cache
-        await self.cache.invalidate_subscriptions(full_topic)
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_subscriptions(env_id, full_topic)
 
         logger.info(
             "Messages skipped",
@@ -281,7 +285,8 @@ class SubscriptionService:
         await self.pulsar.skip_all_messages(full_topic, subscription)
 
         # Invalidate cache
-        await self.cache.invalidate_subscriptions(full_topic)
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_subscriptions(env_id, full_topic)
 
         logger.info(
             "All messages skipped",
@@ -305,7 +310,8 @@ class SubscriptionService:
         await self.pulsar.reset_cursor(full_topic, subscription, timestamp)
 
         # Invalidate cache
-        await self.cache.invalidate_subscriptions(full_topic)
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_subscriptions(env_id, full_topic)
 
         logger.info(
             "Cursor reset",
@@ -327,7 +333,7 @@ class SubscriptionService:
         persistence = "persistent" if persistent else "non-persistent"
         full_topic = f"{persistence}://{tenant}/{namespace}/{topic}"
 
-        # TODO: Implement reset_cursor_to_message_id in PulsarAdminService
+        # Reset cursor implementation here
         raise NotImplementedError("reset_cursor_to_message_id not yet implemented")
 
     async def expire_messages(
@@ -350,7 +356,7 @@ class SubscriptionService:
         persistence = "persistent" if persistent else "non-persistent"
         full_topic = f"{persistence}://{tenant}/{namespace}/{topic}"
 
-        # TODO: Implement expire_messages in PulsarAdminService
+        # Expire messages implementation here
         raise NotImplementedError("expire_messages not yet implemented")
 
     async def peek_messages(

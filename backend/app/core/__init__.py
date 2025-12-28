@@ -2,7 +2,7 @@
 
 from app.core.database import get_db, init_db
 from app.core.exceptions import (
-    PulsarManagerError,
+    PulsarConsoleError,
     NotFoundError,
     ValidationError,
     PulsarConnectionError,
@@ -21,7 +21,7 @@ __all__ = [
     "get_redis",
     "init_redis",
     # Exceptions
-    "PulsarManagerError",
+    "PulsarConsoleError",
     "NotFoundError",
     "ValidationError",
     "PulsarConnectionError",

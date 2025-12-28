@@ -171,10 +171,11 @@ export interface Environment {
   id: string;
   name: string;
   admin_url: string;
-  auth_mode: 'none' | 'token' | 'oauth2';
+  auth_mode: 'none' | 'token' | 'oidc';
   has_token: boolean;
   ca_bundle_ref?: string;
   is_active: boolean;
+  is_shared: boolean;
   created_at: string;
   updated_at?: string;
 }
@@ -187,10 +188,11 @@ export interface EnvironmentListResponse {
 export interface EnvironmentCreate {
   name: string;
   admin_url: string;
-  auth_mode?: 'none' | 'token' | 'oauth2';
+  auth_mode?: 'none' | 'token' | 'oidc';
   token?: string;
   ca_bundle_ref?: string;
   validate_connectivity?: boolean;
+  is_shared?: boolean;
 }
 
 export interface EnvironmentTestResult {

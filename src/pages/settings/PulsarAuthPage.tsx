@@ -1337,22 +1337,44 @@ export default function PulsarAuthPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-white/10 pb-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              'px-4 py-2 rounded-t-lg transition-colors flex items-center gap-2',
-              activeTab === tab.id
-                ? 'bg-primary text-primary-foreground'
-                : 'hover:bg-white/5 text-muted-foreground'
-            )}
-          >
-            <tab.icon size={18} />
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex gap-1 border-b border-white/10 pb-0">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                'px-6 py-4 transition-all duration-200 flex items-center gap-2 relative group',
+                isActive
+                  ? 'text-blue-400 bg-blue-500/5'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+              )}
+            >
+              <tab.icon 
+                size={18} 
+                className={cn(
+                  "transition-colors",
+                  isActive ? "text-blue-400" : "text-muted-foreground group-hover:text-foreground"
+                )} 
+              />
+              <span className={cn(
+                "font-semibold transition-colors",
+                isActive ? "text-blue-400" : ""
+              )}>
+                {tab.label}
+              </span>
+              
+              {isActive && (
+                <motion.div
+                  layoutId="activeTabUnderline"
+                  className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab Content */}

@@ -135,127 +135,128 @@ class CacheService:
     # Tenant cache operations
     # -------------------------------------------------------------------------
 
-    async def get_tenants(self) -> list[dict] | None:
+    async def get_tenants(self, env_id: str) -> list[dict] | None:
         """Get cached tenants list."""
-        return await self.get_json(CacheKeys.TENANTS_LIST)
+        return await self.get_json(CacheKeys.tenants_list(env_id))
 
-    async def set_tenants(self, tenants: list[dict]) -> bool:
+    async def set_tenants(self, env_id: str, tenants: list[dict]) -> bool:
         """Cache tenants list."""
-        return await self.set_json(CacheKeys.TENANTS_LIST, tenants, CacheTTL.LISTS)
+        return await self.set_json(CacheKeys.tenants_list(env_id), tenants, CacheTTL.LISTS)
 
-    async def invalidate_tenants(self) -> bool:
+    async def invalidate_tenants(self, env_id: str) -> bool:
         """Invalidate tenants cache."""
-        return await self.delete(CacheKeys.TENANTS_LIST)
+        return await self.delete(CacheKeys.tenants_list(env_id))
 
     # -------------------------------------------------------------------------
     # Namespace cache operations
     # -------------------------------------------------------------------------
 
-    async def get_namespaces(self, tenant: str) -> list[dict] | None:
+    async def get_namespaces(self, env_id: str, tenant: str) -> list[dict] | None:
         """Get cached namespaces for a tenant."""
-        return await self.get_json(CacheKeys.tenant_namespaces(tenant))
+        return await self.get_json(CacheKeys.tenant_namespaces(env_id, tenant))
 
-    async def set_namespaces(self, tenant: str, namespaces: list[dict]) -> bool:
+    async def set_namespaces(self, env_id: str, tenant: str, namespaces: list[dict]) -> bool:
         """Cache namespaces for a tenant."""
         return await self.set_json(
-            CacheKeys.tenant_namespaces(tenant),
+            CacheKeys.tenant_namespaces(env_id, tenant),
             namespaces,
             CacheTTL.LISTS,
         )
 
-    async def invalidate_namespaces(self, tenant: str) -> bool:
+    async def invalidate_namespaces(self, env_id: str, tenant: str) -> bool:
         """Invalidate namespaces cache for a tenant."""
-        return await self.delete(CacheKeys.tenant_namespaces(tenant))
+        return await self.delete(CacheKeys.tenant_namespaces(env_id, tenant))
 
     # -------------------------------------------------------------------------
     # Topic cache operations
     # -------------------------------------------------------------------------
 
-    async def get_topics(self, tenant: str, namespace: str) -> list[dict] | None:
+    async def get_topics(self, env_id: str, tenant: str, namespace: str) -> list[dict] | None:
         """Get cached topics for a namespace."""
-        return await self.get_json(CacheKeys.namespace_topics(tenant, namespace))
+        return await self.get_json(CacheKeys.namespace_topics(env_id, tenant, namespace))
 
     async def set_topics(
         self,
+        env_id: str,
         tenant: str,
         namespace: str,
         topics: list[dict],
     ) -> bool:
         """Cache topics for a namespace."""
         return await self.set_json(
-            CacheKeys.namespace_topics(tenant, namespace),
+            CacheKeys.namespace_topics(env_id, tenant, namespace),
             topics,
             CacheTTL.LISTS,
         )
 
-    async def invalidate_topics(self, tenant: str, namespace: str) -> bool:
+    async def invalidate_topics(self, env_id: str, tenant: str, namespace: str) -> bool:
         """Invalidate topics cache for a namespace."""
-        return await self.delete(CacheKeys.namespace_topics(tenant, namespace))
+        return await self.delete(CacheKeys.namespace_topics(env_id, tenant, namespace))
 
     # -------------------------------------------------------------------------
     # Topic stats cache operations
     # -------------------------------------------------------------------------
 
-    async def get_topic_stats(self, topic: str) -> dict | None:
+    async def get_topic_stats(self, env_id: str, topic: str) -> dict | None:
         """Get cached topic stats."""
-        return await self.get_json(CacheKeys.topic_stats(topic))
+        return await self.get_json(CacheKeys.topic_stats(env_id, topic))
 
-    async def set_topic_stats(self, topic: str, stats: dict) -> bool:
+    async def set_topic_stats(self, env_id: str, topic: str, stats: dict) -> bool:
         """Cache topic stats."""
         return await self.set_json(
-            CacheKeys.topic_stats(topic),
+            CacheKeys.topic_stats(env_id, topic),
             stats,
             CacheTTL.STATS,
         )
 
-    async def invalidate_topic_stats(self, topic: str) -> bool:
+    async def invalidate_topic_stats(self, env_id: str, topic: str) -> bool:
         """Invalidate topic stats cache."""
-        return await self.delete(CacheKeys.topic_stats(topic))
+        return await self.delete(CacheKeys.topic_stats(env_id, topic))
 
     # -------------------------------------------------------------------------
     # Subscription cache operations
     # -------------------------------------------------------------------------
 
-    async def get_subscriptions(self, topic: str) -> list[dict] | None:
+    async def get_subscriptions(self, env_id: str, topic: str) -> list[dict] | None:
         """Get cached subscriptions for a topic."""
-        return await self.get_json(CacheKeys.topic_subscriptions(topic))
+        return await self.get_json(CacheKeys.topic_subscriptions(env_id, topic))
 
-    async def set_subscriptions(self, topic: str, subscriptions: list[dict]) -> bool:
+    async def set_subscriptions(self, env_id: str, topic: str, subscriptions: list[dict]) -> bool:
         """Cache subscriptions for a topic."""
         return await self.set_json(
-            CacheKeys.topic_subscriptions(topic),
+            CacheKeys.topic_subscriptions(env_id, topic),
             subscriptions,
             CacheTTL.LISTS,
         )
 
-    async def invalidate_subscriptions(self, topic: str) -> bool:
+    async def invalidate_subscriptions(self, env_id: str, topic: str) -> bool:
         """Invalidate subscriptions cache for a topic."""
-        return await self.delete(CacheKeys.topic_subscriptions(topic))
+        return await self.delete(CacheKeys.topic_subscriptions(env_id, topic))
 
     # -------------------------------------------------------------------------
     # Broker cache operations
     # -------------------------------------------------------------------------
 
-    async def get_brokers(self) -> list[dict] | None:
+    async def get_brokers(self, env_id: str) -> list[dict] | None:
         """Get cached brokers list."""
-        return await self.get_json(CacheKeys.BROKER_LIST)
+        return await self.get_json(CacheKeys.broker_list(env_id))
 
-    async def set_brokers(self, brokers: list[dict]) -> bool:
+    async def set_brokers(self, env_id: str, brokers: list[dict]) -> bool:
         """Cache brokers list."""
-        return await self.set_json(CacheKeys.BROKER_LIST, brokers, CacheTTL.BROKER)
+        return await self.set_json(CacheKeys.broker_list(env_id), brokers, CacheTTL.BROKER)
 
-    async def invalidate_brokers(self) -> bool:
+    async def invalidate_brokers(self, env_id: str) -> bool:
         """Invalidate brokers cache."""
-        return await self.delete(CacheKeys.BROKER_LIST)
+        return await self.delete(CacheKeys.broker_list(env_id))
 
-    async def get_broker_stats(self, broker: str) -> dict | None:
+    async def get_broker_stats(self, env_id: str, broker: str) -> dict | None:
         """Get cached broker stats."""
-        return await self.get_json(CacheKeys.broker_stats(broker))
+        return await self.get_json(CacheKeys.broker_stats(env_id, broker))
 
-    async def set_broker_stats(self, broker: str, stats: dict) -> bool:
+    async def set_broker_stats(self, env_id: str, broker: str, stats: dict) -> bool:
         """Cache broker stats."""
         return await self.set_json(
-            CacheKeys.broker_stats(broker),
+            CacheKeys.broker_stats(env_id, broker),
             stats,
             CacheTTL.STATS,
         )
@@ -322,21 +323,21 @@ class CacheService:
     # Bulk invalidation
     # -------------------------------------------------------------------------
 
-    async def invalidate_tenant(self, tenant: str) -> None:
+    async def invalidate_tenant(self, env_id: str, tenant: str) -> None:
         """Invalidate all cache entries for a tenant."""
-        await self.invalidate_tenants()
-        await self.invalidate_namespaces(tenant)
-        await self.delete_pattern(f"namespace:{tenant}/*")
+        await self.invalidate_tenants(env_id)
+        await self.invalidate_namespaces(env_id, tenant)
+        await self.delete_pattern(f"env:{env_id}:namespace:{tenant}/*")
 
-    async def invalidate_namespace(self, tenant: str, namespace: str) -> None:
+    async def invalidate_namespace(self, env_id: str, tenant: str, namespace: str) -> None:
         """Invalidate all cache entries for a namespace."""
-        await self.invalidate_namespaces(tenant)
-        await self.invalidate_topics(tenant, namespace)
+        await self.invalidate_namespaces(env_id, tenant)
+        await self.invalidate_topics(env_id, tenant, namespace)
 
-    async def invalidate_topic(self, topic: str) -> None:
+    async def invalidate_topic(self, env_id: str, topic: str) -> None:
         """Invalidate all cache entries for a topic."""
-        await self.invalidate_topic_stats(topic)
-        await self.invalidate_subscriptions(topic)
+        await self.invalidate_topic_stats(env_id, topic)
+        await self.invalidate_subscriptions(env_id, topic)
 
     async def invalidate_all(self) -> int:
         """Invalidate all cache entries."""

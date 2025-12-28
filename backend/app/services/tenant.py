@@ -53,9 +53,10 @@ class TenantService:
 
     async def get_tenants(self, use_cache: bool = True) -> list[dict[str, Any]]:
         """Get all tenants with statistics."""
+        env_id = self.pulsar.environment_id or "default"
         # Try cache first
         if use_cache:
-            cached = await self.cache.get_tenants()
+            cached = await self.cache.get_tenants(env_id)
             if cached:
                 return cached
 
@@ -110,7 +111,7 @@ class TenantService:
                                 pass
                     except Exception:
                         pass
-
+                
                 tenant_data["topic_count"] = total_topics
                 tenant_data["total_backlog"] = total_backlog
                 tenant_data["msg_rate_in"] = total_rate_in
@@ -122,7 +123,7 @@ class TenantService:
             tenants.append(tenant_data)
 
         # Cache result
-        await self.cache.set_tenants(tenants)
+        await self.cache.set_tenants(env_id, tenants)
 
         return tenants
 
@@ -174,7 +175,8 @@ class TenantService:
         )
 
         # Invalidate cache
-        await self.cache.invalidate_tenants()
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_tenants(env_id)
 
         logger.info("Tenant created", tenant=name)
 
@@ -205,7 +207,8 @@ class TenantService:
         )
 
         # Invalidate cache
-        await self.cache.invalidate_tenants()
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_tenants(env_id)
 
         logger.info("Tenant updated", tenant=name)
 
@@ -230,6 +233,7 @@ class TenantService:
         await self.pulsar.delete_tenant(name)
 
         # Invalidate cache
-        await self.cache.invalidate_tenant(name)
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_tenant(env_id, name)
 
         logger.info("Tenant deleted", tenant=name)

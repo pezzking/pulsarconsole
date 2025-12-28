@@ -2,15 +2,18 @@
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, String, Text, Enum as SQLEnum
+from sqlalchemy import Boolean, String, Text, Enum as SQLEnum, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
+import uuid
 
 from app.models.base import BaseModel
 
 if TYPE_CHECKING:
     from app.models.oidc_provider import OIDCProvider
     from app.models.role import Role
+    from app.models.user import User
 
 
 class AuthMode(str, enum.Enum):
@@ -119,7 +122,25 @@ class Environment(BaseModel):
         doc="Encrypted superuser token for Pulsar auth management (enable/disable auth, manage permissions)",
     )
 
+    # Visibility & Ownership
+    is_shared: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+        doc="Whether this environment is visible to all users",
+    )
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        doc="User who created this environment",
+    )
+
     # Relationships
+    created_by: Mapped["User | None"] = relationship(
+        "User",
+        foreign_keys=[created_by_id],
+    )
     oidc_provider: Mapped["OIDCProvider | None"] = relationship(
         "OIDCProvider",
         back_populates="environment",

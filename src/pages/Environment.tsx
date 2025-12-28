@@ -18,6 +18,7 @@ interface EnvironmentFormData {
     auth_mode: "none" | "token" | "oidc";
     token: string;
     validate_connectivity: boolean;
+    is_shared: boolean;
 }
 
 const emptyForm: EnvironmentFormData = {
@@ -26,6 +27,7 @@ const emptyForm: EnvironmentFormData = {
     auth_mode: "none",
     token: "",
     validate_connectivity: true,
+    is_shared: true,
 };
 
 export default function EnvironmentPage() {
@@ -69,6 +71,7 @@ export default function EnvironmentPage() {
             auth_mode: env.auth_mode as "none" | "token" | "oidc",
             token: "",
             validate_connectivity: true,
+            is_shared: env.is_shared,
         });
         setTestResult(null);
         setEditingEnv(env);
@@ -131,6 +134,7 @@ export default function EnvironmentPage() {
                         oidc_mode: formData.auth_mode === "oidc" ? "passthrough" : "none",
                         token: formData.auth_mode === "token" && formData.token ? formData.token : undefined,
                         validate_connectivity: formData.validate_connectivity,
+                        is_shared: formData.is_shared,
                     },
                 });
                 toast.success("Environment updated successfully");
@@ -142,6 +146,7 @@ export default function EnvironmentPage() {
                     oidc_mode: formData.auth_mode === "oidc" ? "passthrough" : "none",
                     token: formData.auth_mode === "token" ? formData.token : undefined,
                     validate_connectivity: formData.validate_connectivity,
+                    is_shared: formData.is_shared,
                 });
                 toast.success("Environment created successfully");
             }
@@ -419,17 +424,32 @@ export default function EnvironmentPage() {
                                     </motion.div>
                                 )}
 
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="validate"
-                                        checked={formData.validate_connectivity}
-                                        onChange={(e) => setFormData({ ...formData, validate_connectivity: e.target.checked })}
-                                        className="rounded"
-                                    />
-                                    <label htmlFor="validate" className="text-sm">
-                                        Validate connectivity before saving
-                                    </label>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="validate"
+                                            checked={formData.validate_connectivity}
+                                            onChange={(e) => setFormData({ ...formData, validate_connectivity: e.target.checked })}
+                                            className="rounded"
+                                        />
+                                        <label htmlFor="validate" className="text-sm">
+                                            Validate connectivity before saving
+                                        </label>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="is_shared"
+                                            checked={formData.is_shared}
+                                            onChange={(e) => setFormData({ ...formData, is_shared: e.target.checked })}
+                                            className="rounded"
+                                        />
+                                        <label htmlFor="is_shared" className="text-sm">
+                                            Shared environment (Visible to all users)
+                                        </label>
+                                    </div>
                                 </div>
 
                                 {testResult && (

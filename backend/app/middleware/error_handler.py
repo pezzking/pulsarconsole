@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.exceptions import (
-    PulsarManagerError,
+    PulsarConsoleError,
     NotFoundError,
     ValidationError,
     PulsarConnectionError,
@@ -60,7 +60,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         elif isinstance(exc, PulsarConnectionError):
             status_code = 503
             error_response = self._format_error(exc, request_id, timestamp)
-        elif isinstance(exc, PulsarManagerError):
+        elif isinstance(exc, PulsarConsoleError):
             status_code = 500
             error_response = self._format_error(exc, request_id, timestamp)
         else:
@@ -85,11 +85,11 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
 
     def _format_error(
         self,
-        exc: PulsarManagerError,
+        exc: PulsarConsoleError,
         request_id: str,
         timestamp: str,
     ) -> dict[str, Any]:
-        """Format error response from PulsarManagerError."""
+        """Format error response from PulsarConsoleError."""
         error_dict: dict[str, Any] = {
             "error": {
                 "code": exc.code,

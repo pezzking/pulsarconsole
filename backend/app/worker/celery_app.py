@@ -7,7 +7,7 @@ from app.config import settings
 
 # Create Celery app
 celery_app = Celery(
-    "pulsar_manager",
+    "pulsar_console",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
     include=[

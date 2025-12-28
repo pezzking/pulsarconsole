@@ -42,6 +42,9 @@ class EnvironmentCreate(EnvironmentBase):
     validate_connectivity: bool = Field(
         default=True, description="Test connectivity before saving"
     )
+    is_shared: bool = Field(
+        default=True, description="Whether this environment is visible to all users"
+    )
 
     @field_validator("token")
     @classmethod
@@ -79,6 +82,9 @@ class EnvironmentUpdate(BaseSchema):
     validate_connectivity: bool = Field(
         default=True, description="Test connectivity before saving"
     )
+    is_shared: bool | None = Field(
+        default=None, description="Whether this environment is visible to all users"
+    )
 
 
 class EnvironmentResponse(EnvironmentBase):
@@ -97,6 +103,8 @@ class EnvironmentResponse(EnvironmentBase):
     rbac_sync_mode: str = Field(
         default="console_only", description="RBAC synchronization mode"
     )
+    is_shared: bool = Field(default=True, description="Whether this environment is visible to all users")
+    created_by_id: UUID | None = Field(default=None, description="User who created this environment")
     created_at: datetime
     updated_at: datetime | None = None
 

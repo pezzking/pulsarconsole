@@ -3,7 +3,7 @@
 from prometheus_client import Counter, Gauge, Histogram, Info
 
 # Application info
-APP_INFO = Info("pulsar_manager", "Pulsar Manager application info")
+APP_INFO = Info("pulsar_console", "Pulsar Console application info")
 
 # HTTP metrics
 HTTP_REQUESTS_TOTAL = Counter(

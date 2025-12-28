@@ -50,6 +50,11 @@ class AuthValidationResponse(BaseModel):
     """Response for pre-flight validation."""
 
     can_proceed: bool = Field(description="Whether it's safe to proceed")
+    can_enable_auth: bool = Field(description="Whether auth can be enabled")
+    has_valid_token: bool = Field(description="Whether superuser token is valid")
+    superuser_roles_configured: bool = Field(
+        description="Whether superuser roles are configured"
+    )
     warnings: list[str] = Field(default_factory=list, description="Warning messages")
     errors: list[str] = Field(default_factory=list, description="Error messages")
     current_config: dict[str, Any] = Field(
@@ -148,6 +153,9 @@ async def validate_auth_setup(
 
     return AuthValidationResponse(
         can_proceed=result.can_proceed,
+        can_enable_auth=result.can_enable_auth,
+        has_valid_token=result.has_valid_token,
+        superuser_roles_configured=result.superuser_roles_configured,
         warnings=result.warnings,
         errors=result.errors,
         current_config=result.current_config,

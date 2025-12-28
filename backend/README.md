@@ -1,6 +1,6 @@
-# Pulsar Manager API
+# Pulsar Console API
 
-Modern FastAPI backend for Apache Pulsar Manager.
+Modern FastAPI backend for Apache Pulsar Console.
 
 ## Quick Start
 

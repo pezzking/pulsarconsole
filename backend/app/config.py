@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     # Application Settings
     # -------------------------------------------------------------------------
-    app_name: str = Field(default="pulsar-manager-api")
+    app_name: str = Field(default="pulsar-console-api")
     app_env: Literal["development", "staging", "production"] = Field(default="development")
     debug: bool = Field(default=False)
     log_level: str = Field(default="INFO")
@@ -134,7 +134,7 @@ class Settings(BaseSettings):
     # OpenTelemetry
     # -------------------------------------------------------------------------
     otel_enabled: bool = Field(default=False)
-    otel_service_name: str = Field(default="pulsar-manager-api")
+    otel_service_name: str = Field(default="pulsar-console-api")
     otel_exporter_otlp_endpoint: str = Field(default="http://localhost:4317")
 
     # -------------------------------------------------------------------------
@@ -171,7 +171,7 @@ class Settings(BaseSettings):
             if isinstance(value, str) and value.startswith("bws://"):
                 # 1. Try environment variable with prefix (set by bws run)
                 # We use the field name in uppercase as per standard env var conventions
-                env_key = f"pulsar-manager-react-{field_name.upper()}"
+                env_key = f"pulsar-console-react-{field_name.upper()}"
                 env_value = os.environ.get(env_key)
 
                 if env_value:

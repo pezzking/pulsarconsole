@@ -28,6 +28,8 @@ def _env_to_response(env: Environment) -> EnvironmentResponse:
         has_token=env.token_encrypted is not None,
         ca_bundle_ref=env.ca_bundle_ref,
         is_active=env.is_active,
+        is_shared=env.is_shared,
+        created_by_id=env.created_by_id,
         created_at=env.created_at,
         updated_at=env.updated_at,
     )
@@ -43,9 +45,9 @@ async def get_environment(_user: CurrentApprovedUser, service: EnvService) -> En
 
 
 @router.get("/all", response_model=EnvironmentListResponse)
-async def list_environments(_user: CurrentApprovedUser, service: EnvService) -> EnvironmentListResponse:
+async def list_environments(user: CurrentApprovedUser, service: EnvService) -> EnvironmentListResponse:
     """List all environment configurations."""
-    envs = await service.get_all_environments()
+    envs = await service.get_all_environments(user_id=user.id)
     return EnvironmentListResponse(
         environments=[_env_to_response(env) for env in envs],
         total=len(envs),
@@ -62,7 +64,7 @@ async def activate_environment(name: str, _user: CurrentApprovedUser, service: E
 @router.post("", response_model=EnvironmentResponse, status_code=status.HTTP_201_CREATED)
 async def create_environment(
     data: EnvironmentCreate,
-    _user: CurrentApprovedUser,
+    user: CurrentApprovedUser,
     service: EnvService,
 ) -> EnvironmentResponse:
     """Create a new environment configuration."""
@@ -75,6 +77,8 @@ async def create_environment(
         token=data.token,
         ca_bundle_ref=data.ca_bundle_ref,
         validate_connectivity=data.validate_connectivity,
+        is_shared=data.is_shared,
+        created_by_id=user.id,
     )
     return _env_to_response(env)
 
@@ -98,6 +102,7 @@ async def update_environment(
         token=data.token,
         ca_bundle_ref=data.ca_bundle_ref,
         validate_connectivity=data.validate_connectivity,
+        is_shared=data.is_shared,
     )
     return _env_to_response(env)
 

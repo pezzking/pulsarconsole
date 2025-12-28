@@ -1,5 +1,5 @@
 # =============================================================================
-# Pulsar Manager - Development Makefile
+# Pulsar Console - Development Makefile
 # =============================================================================
 
 .PHONY: help install dev-install lint format test run run-worker run-beat \
@@ -7,7 +7,7 @@
 
 # Default target
 help:
-	@echo "Pulsar Manager Development Commands"
+	@echo "Pulsar Console Development Commands"
 	@echo "===================================="
 	@echo ""
 	@echo "Setup:"

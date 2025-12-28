@@ -1,1 +1,1 @@
-"""Test suite for Pulsar Manager API."""
+"""Test suite for Pulsar Console API."""

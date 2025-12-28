@@ -1,4 +1,4 @@
-# Missing Features Compared to Original Pulsar Manager
+# Missing Features Compared to Original Pulsar Manager (Now Pulsar Console)
 
 ## Critical Missing Features
 

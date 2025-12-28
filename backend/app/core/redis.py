@@ -55,40 +55,50 @@ async def get_redis_context() -> AsyncGenerator[Redis, None]:
 class CacheKeys:
     """Cache key patterns for different resources."""
 
-    ENVIRONMENT_CONFIG = "environment:config"
-    TENANTS_LIST = "tenants:list"
-    TENANT_NAMESPACES = "tenant:{tenant}:namespaces"
-    NAMESPACE_TOPICS = "namespace:{tenant}/{namespace}:topics"
-    TOPIC_STATS = "topic:{topic}:stats"
-    TOPIC_SUBSCRIPTIONS = "topic:{topic}:subscriptions"
-    BROKER_LIST = "broker:list"
-    BROKER_STATS = "broker:{broker}:stats"
+    ENVIRONMENT_CONFIG = "env:{env_id}:config"
+    TENANTS_LIST = "env:{env_id}:tenants:list"
+    TENANT_NAMESPACES = "env:{env_id}:tenant:{tenant}:namespaces"
+    NAMESPACE_TOPICS = "env:{env_id}:namespace:{tenant}/{namespace}:topics"
+    TOPIC_STATS = "env:{env_id}:topic:{topic}:stats"
+    TOPIC_SUBSCRIPTIONS = "env:{env_id}:topic:{topic}:subscriptions"
+    BROKER_LIST = "env:{env_id}:broker:list"
+    BROKER_STATS = "env:{env_id}:broker:{broker}:stats"
     RATE_LIMIT_BROWSE = "ratelimit:browse:{session_id}"
 
     @classmethod
-    def tenant_namespaces(cls, tenant: str) -> str:
+    def tenant_namespaces(cls, env_id: str, tenant: str) -> str:
         """Get cache key for tenant's namespaces."""
-        return cls.TENANT_NAMESPACES.format(tenant=tenant)
+        return cls.TENANT_NAMESPACES.format(env_id=env_id, tenant=tenant)
 
     @classmethod
-    def namespace_topics(cls, tenant: str, namespace: str) -> str:
+    def namespace_topics(cls, env_id: str, tenant: str, namespace: str) -> str:
         """Get cache key for namespace's topics."""
-        return cls.NAMESPACE_TOPICS.format(tenant=tenant, namespace=namespace)
+        return cls.NAMESPACE_TOPICS.format(env_id=env_id, tenant=tenant, namespace=namespace)
 
     @classmethod
-    def topic_stats(cls, topic: str) -> str:
+    def topic_stats(cls, env_id: str, topic: str) -> str:
         """Get cache key for topic stats."""
-        return cls.TOPIC_STATS.format(topic=topic)
+        return cls.TOPIC_STATS.format(env_id=env_id, topic=topic)
 
     @classmethod
-    def topic_subscriptions(cls, topic: str) -> str:
+    def topic_subscriptions(cls, env_id: str, topic: str) -> str:
         """Get cache key for topic subscriptions."""
-        return cls.TOPIC_SUBSCRIPTIONS.format(topic=topic)
+        return cls.TOPIC_SUBSCRIPTIONS.format(env_id=env_id, topic=topic)
 
     @classmethod
-    def broker_stats(cls, broker: str) -> str:
+    def broker_stats(cls, env_id: str, broker: str) -> str:
         """Get cache key for broker stats."""
-        return cls.BROKER_STATS.format(broker=broker)
+        return cls.BROKER_STATS.format(env_id=env_id, broker=broker)
+
+    @classmethod
+    def tenants_list(cls, env_id: str) -> str:
+        """Get cache key for tenants list."""
+        return cls.TENANTS_LIST.format(env_id=env_id)
+
+    @classmethod
+    def broker_list(cls, env_id: str) -> str:
+        """Get cache key for broker list."""
+        return cls.BROKER_LIST.format(env_id=env_id)
 
     @classmethod
     def rate_limit_browse(cls, session_id: str) -> str:
@@ -140,22 +150,3 @@ async def cache_delete_pattern(pattern: str) -> int:
             if cursor == 0:
                 break
         return deleted
-
-
-async def cache_invalidate_tenant(tenant: str) -> None:
-    """Invalidate all cache entries for a tenant."""
-    await cache_delete(CacheKeys.TENANTS_LIST)
-    await cache_delete(CacheKeys.tenant_namespaces(tenant))
-    await cache_delete_pattern(f"namespace:{tenant}/*")
-
-
-async def cache_invalidate_namespace(tenant: str, namespace: str) -> None:
-    """Invalidate all cache entries for a namespace."""
-    await cache_delete(CacheKeys.tenant_namespaces(tenant))
-    await cache_delete(CacheKeys.namespace_topics(tenant, namespace))
-
-
-async def cache_invalidate_topic(topic: str) -> None:
-    """Invalidate all cache entries for a topic."""
-    await cache_delete(CacheKeys.topic_stats(topic))
-    await cache_delete(CacheKeys.topic_subscriptions(topic))

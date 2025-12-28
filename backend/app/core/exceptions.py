@@ -1,10 +1,10 @@
-"""Custom exceptions for Pulsar Manager API."""
+"""Custom exceptions for Pulsar Console API."""
 
 from typing import Any
 
 
-class PulsarManagerError(Exception):
-    """Base exception for all Pulsar Manager errors."""
+class PulsarConsoleError(Exception):
+    """Base exception for all Pulsar Console errors."""
 
     def __init__(
         self,
@@ -18,7 +18,7 @@ class PulsarManagerError(Exception):
         self.details = details or {}
 
 
-class NotFoundError(PulsarManagerError):
+class NotFoundError(PulsarConsoleError):
     """Resource not found error."""
 
     def __init__(
@@ -36,7 +36,7 @@ class NotFoundError(PulsarManagerError):
         self.resource_id = resource_id
 
 
-class ValidationError(PulsarManagerError):
+class ValidationError(PulsarConsoleError):
     """Validation error for invalid input."""
 
     def __init__(
@@ -60,7 +60,7 @@ class ValidationError(PulsarManagerError):
         self.value = value
 
 
-class PulsarConnectionError(PulsarManagerError):
+class PulsarConnectionError(PulsarConsoleError):
     """Error connecting to Pulsar cluster."""
 
     def __init__(
@@ -84,7 +84,7 @@ class PulsarConnectionError(PulsarManagerError):
         self.original_error = original_error
 
 
-class CacheError(PulsarManagerError):
+class CacheError(PulsarConsoleError):
     """Error with cache operations."""
 
     def __init__(
@@ -108,7 +108,7 @@ class CacheError(PulsarManagerError):
         self.key = key
 
 
-class DependencyError(PulsarManagerError):
+class DependencyError(PulsarConsoleError):
     """Error when operation blocked by dependencies."""
 
     def __init__(
@@ -135,7 +135,7 @@ class DependencyError(PulsarManagerError):
         self.dependent_count = dependent_count
 
 
-class RateLimitError(PulsarManagerError):
+class RateLimitError(PulsarConsoleError):
     """Rate limit exceeded error."""
 
     def __init__(
@@ -155,7 +155,7 @@ class RateLimitError(PulsarManagerError):
         self.retry_after = retry_after
 
 
-class DatabaseError(PulsarManagerError):
+class DatabaseError(PulsarConsoleError):
     """Database operation error."""
 
     def __init__(

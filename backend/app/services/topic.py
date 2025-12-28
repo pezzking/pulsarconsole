@@ -79,9 +79,10 @@ class TopicService:
         use_cache: bool = True,
     ) -> list[dict[str, Any]]:
         """Get all topics for a namespace."""
+        env_id = self.pulsar.environment_id or "default"
         # Try cache first
         if use_cache:
-            cached = await self.cache.get_topics(tenant, namespace)
+            cached = await self.cache.get_topics(env_id, tenant, namespace)
             if cached:
                 return cached
 
@@ -115,7 +116,7 @@ class TopicService:
             topics.append(topic_data)
 
         # Cache result
-        await self.cache.set_topics(tenant, namespace, topics)
+        await self.cache.set_topics(env_id, tenant, namespace, topics)
 
         return topics
 
@@ -213,7 +214,8 @@ class TopicService:
             await self.pulsar.create_topic(tenant, namespace, topic, persistent)
 
         # Invalidate cache
-        await self.cache.invalidate_topics(tenant, namespace)
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_topics(env_id, tenant, namespace)
 
         logger.info(
             "Topic created",
@@ -263,8 +265,9 @@ class TopicService:
         await self.pulsar.delete_topic(tenant, namespace, topic, persistent, force)
 
         # Invalidate caches
-        await self.cache.invalidate_topics(tenant, namespace)
-        await self.cache.invalidate_topic(full_name)
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_topics(env_id, tenant, namespace)
+        await self.cache.invalidate_topic(env_id, full_name)
 
         logger.info(
             "Topic deleted",
@@ -318,7 +321,8 @@ class TopicService:
         )
 
         # Invalidate cache
-        await self.cache.invalidate_topics(tenant, namespace)
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_topics(env_id, tenant, namespace)
 
         logger.info(
             "Topic partitions updated",

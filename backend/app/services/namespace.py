@@ -57,9 +57,10 @@ class NamespaceService:
         use_cache: bool = True,
     ) -> list[dict[str, Any]]:
         """Get all namespaces for a tenant."""
+        env_id = self.pulsar.environment_id or "default"
         # Try cache first
         if use_cache:
-            cached = await self.cache.get_namespaces(tenant)
+            cached = await self.cache.get_namespaces(env_id, tenant)
             if cached:
                 return cached
 
@@ -105,7 +106,7 @@ class NamespaceService:
             namespaces.append(namespace_data)
 
         # Cache result
-        await self.cache.set_namespaces(tenant, namespaces)
+        await self.cache.set_namespaces(env_id, tenant, namespaces)
 
         return namespaces
 
@@ -159,7 +160,8 @@ class NamespaceService:
         await self.pulsar.create_namespace(tenant, namespace)
 
         # Invalidate cache
-        await self.cache.invalidate_namespaces(tenant)
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_namespaces(env_id, tenant)
 
         logger.info("Namespace created", tenant=tenant, namespace=namespace)
 
@@ -210,7 +212,8 @@ class NamespaceService:
             )
 
         # Invalidate cache
-        await self.cache.invalidate_namespaces(tenant)
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_namespaces(env_id, tenant)
 
         logger.info("Namespace policies updated", tenant=tenant, namespace=namespace)
 
@@ -236,6 +239,7 @@ class NamespaceService:
         await self.pulsar.delete_namespace(tenant, namespace)
 
         # Invalidate cache
-        await self.cache.invalidate_namespace(tenant, namespace)
+        env_id = self.pulsar.environment_id or "default"
+        await self.cache.invalidate_namespace(env_id, tenant, namespace)
 
         logger.info("Namespace deleted", tenant=tenant, namespace=namespace)

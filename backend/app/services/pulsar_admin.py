@@ -94,9 +94,11 @@ class PulsarAdminService:
         self,
         admin_url: str | None = None,
         auth_token: str | None = None,
+        environment_id: str | None = None,
     ) -> None:
         self.admin_url = (admin_url or settings.pulsar_admin_url).rstrip("/")
         self.auth_token = auth_token or settings.pulsar_auth_token
+        self.environment_id = environment_id
         self.circuit_breaker = CircuitBreaker()
 
         # HTTP client configuration
@@ -865,8 +867,17 @@ class PulsarAdminService:
         response = await self._request("GET", "/admin/v2/brokers/leaderBroker")
         return self._handle_response(response, "leader-broker")
 
+    async def get_broker_configuration(self) -> dict[str, Any] | list[str]:
+        """Get all broker configuration parameters.
+        
+        Note: In Pulsar 3.x, this returns a list of configuration names.
+        Use get_broker_runtime_config() to get the effective values.
+        """
+        response = await self._request("GET", "/admin/v2/brokers/configuration")
+        return self._handle_response(response, "configuration")
+
     async def get_broker_runtime_config(self) -> dict[str, Any]:
-        """Get broker runtime configuration."""
+        """Get broker runtime configuration (effective config)."""
         response = await self._request("GET", "/admin/v2/brokers/configuration/runtime")
         return self._handle_response(response, "runtime-config")
 
@@ -897,8 +908,11 @@ class PulsarAdminService:
 
     async def get_dynamic_config_names(self) -> list[str]:
         """Get all available dynamic configuration names."""
-        response = await self._request("GET", "/admin/v2/brokers/configuration")
-        return self._handle_response(response, "dynamic-config-names")
+        # This endpoint returns a dictionary of all configuration parameters
+        config = await self.get_broker_configuration()
+        if isinstance(config, list):
+            return config
+        return list(config.keys()) if isinstance(config, dict) else []
 
     async def update_dynamic_config(
         self,
@@ -934,7 +948,26 @@ class PulsarAdminService:
         - authenticationProviders
         - superUserRoles
         """
-        runtime_config = await self.get_broker_runtime_config()
+        # Fetch effective runtime configuration (always a map in Pulsar 2.x and 3.x)
+        auth_config_raw = {}
+        try:
+            runtime = await self.get_broker_runtime_config()
+            if isinstance(runtime, dict):
+                auth_config_raw.update(runtime)
+        except Exception as e:
+            logger.warning("Failed to fetch runtime broker configuration", error=str(e))
+
+        # Merge with general configuration if needed
+        # In Pulsar 3.x, get_broker_configuration() returns a list of keys, so we ignore it if it's a list
+        try:
+            general = await self.get_broker_configuration()
+            if isinstance(general, dict):
+                # Only update keys that are not already in runtime (runtime takes precedence)
+                for k, v in general.items():
+                    if k not in auth_config_raw:
+                        auth_config_raw[k] = v
+        except Exception as e:
+            logger.warning("Failed to fetch general broker configuration", error=str(e))
 
         auth_keys = [
             "authenticationEnabled",
@@ -948,19 +981,34 @@ class PulsarAdminService:
             "tokenPublicKey",
         ]
 
-        auth_config = {}
+        auth_status = {}
         for key in auth_keys:
-            if key in runtime_config:
-                value = runtime_config[key]
-                # Parse boolean strings
-                if value in ("true", "false"):
-                    value = value == "true"
-                # Parse comma-separated lists
-                elif "," in str(value):
-                    value = [v.strip() for v in str(value).split(",") if v.strip()]
-                auth_config[key] = value
+            if key in auth_config_raw:
+                value = auth_config_raw[key]
+                # Robust boolean parsing
+                if isinstance(value, str):
+                    lower_val = value.lower().strip()
+                    if lower_val in ("true", "1", "yes", "on"):
+                        value = True
+                    elif lower_val in ("false", "0", "no", "off"):
+                        value = False
+                
+                # Parse lists (comma-separated or single values)
+                if key in ("authenticationProviders", "superUserRoles"):
+                    if isinstance(value, str):
+                        value = [v.strip() for v in value.split(",") if v.strip()]
+                    elif value is not None and not isinstance(value, list):
+                        value = [value]
+                
+                auth_status[key] = value
 
-        return auth_config
+        # Fallback: if authenticationEnabled is missing but token is provided AND we have providers,
+        # it's highly likely authentication is enabled but just not reported correctly in some Pulsar versions
+        if not auth_status.get("authenticationEnabled"):
+            if (self.auth_token or auth_status.get("tokenSecretKey") or auth_status.get("tokenPublicKey")) and auth_status.get("authenticationProviders"):
+                auth_status["authenticationEnabled"] = True
+
+        return auth_status
 
     # -------------------------------------------------------------------------
     # Message operations

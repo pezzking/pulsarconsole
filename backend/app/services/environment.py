@@ -2,6 +2,7 @@
 
 import re
 from typing import Any
+import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -107,15 +108,20 @@ class EnvironmentService:
             return envs[0]
         return None
 
-    async def get_all_environments(self) -> list[Environment]:
-        """Get all environment configurations."""
-        return await self.repository.get_all()
+    async def get_all_environments(self, user_id: uuid.UUID | None = None) -> list[Environment]:
+        """Get all environment configurations visible to the user."""
+        return await self.repository.get_all_visible(user_id=user_id)
 
     async def set_active_environment(self, name: str) -> Environment:
         """Set an environment as active."""
         env = await self.repository.set_active(name)
         if env is None:
             raise NotFoundError("environment", name)
+        
+        # Invalidate all cache to ensure no data from previous environment remains
+        from app.services.cache import cache_service
+        await cache_service.invalidate_all()
+        
         logger.info("Active environment changed", name=name)
         return env
 
@@ -140,6 +146,8 @@ class EnvironmentService:
         rbac_enabled: bool = False,
         rbac_sync_mode: RBACSyncMode = RBACSyncMode.console_only,
         validate_connectivity: bool = True,
+        is_shared: bool = True,
+        created_by_id: uuid.UUID | None = None,
     ) -> Environment:
         """Create a new environment configuration."""
         # Validate
@@ -178,6 +186,8 @@ class EnvironmentService:
             ca_bundle_ref=ca_bundle_ref,
             rbac_enabled=rbac_enabled,
             rbac_sync_mode=rbac_sync_mode,
+            is_shared=is_shared,
+            created_by_id=created_by_id,
         )
 
         # Set as active if first environment
@@ -200,6 +210,7 @@ class EnvironmentService:
         rbac_enabled: bool | None = None,
         rbac_sync_mode: RBACSyncMode | None = None,
         validate_connectivity: bool = True,
+        is_shared: bool | None = None,
     ) -> Environment:
         """Update environment configuration."""
         # Get existing
@@ -238,6 +249,7 @@ class EnvironmentService:
             ca_bundle_ref=ca_bundle_ref,
             rbac_enabled=rbac_enabled,
             rbac_sync_mode=rbac_sync_mode,
+            is_shared=is_shared,
         )
 
         logger.info("Environment updated", name=name)
@@ -260,7 +272,11 @@ class EnvironmentService:
         if env.auth_mode == AuthMode.oidc and env.oidc_mode == OIDCMode.passthrough and user_token:
             token = user_token
 
-        return PulsarAdminService(admin_url=env.admin_url, auth_token=token)
+        return PulsarAdminService(
+            admin_url=env.admin_url,
+            auth_token=token,
+            environment_id=str(env.id)
+        )
 
     async def get_superuser_pulsar_client(self) -> PulsarAdminService:
         """Get Pulsar admin client with superuser token for auth management.
@@ -273,7 +289,11 @@ class EnvironmentService:
             raise NotFoundError("environment", "default")
 
         token = self.repository.get_decrypted_superuser_token(env)
-        return PulsarAdminService(admin_url=env.admin_url, auth_token=token)
+        return PulsarAdminService(
+            admin_url=env.admin_url,
+            auth_token=token,
+            environment_id=str(env.id)
+        )
 
     async def get_environment_with_superuser_token(
         self,

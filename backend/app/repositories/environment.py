@@ -1,7 +1,8 @@
 """Environment repository for data access."""
 
-from sqlalchemy import select, update
+from sqlalchemy import select, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+import uuid
 
 from app.core.security import decrypt_value, encrypt_value
 from app.models.environment import AuthMode, Environment, OIDCMode, RBACSyncMode
@@ -21,6 +22,25 @@ class EnvironmentRepository(BaseRepository[Environment]):
         )
         return result.scalar_one_or_none()
 
+    async def get_all_visible(self, user_id: uuid.UUID | None = None) -> list[Environment]:
+        """Get all environments visible to a user.
+        
+        Visible if is_shared=True OR created_by_id=user_id.
+        """
+        query = select(Environment)
+        if user_id:
+            query = query.where(
+                or_(
+                    Environment.is_shared == True,
+                    Environment.created_by_id == user_id
+                )
+            )
+        else:
+            query = query.where(Environment.is_shared == True)
+        
+        result = await self.session.execute(query.order_by(Environment.created_at.desc()))
+        return list(result.scalars().all())
+
     async def create_with_encryption(
         self,
         name: str,
@@ -32,6 +52,8 @@ class EnvironmentRepository(BaseRepository[Environment]):
         ca_bundle_ref: str | None = None,
         rbac_enabled: bool = False,
         rbac_sync_mode: RBACSyncMode = RBACSyncMode.console_only,
+        is_shared: bool = True,
+        created_by_id: uuid.UUID | None = None,
     ) -> Environment:
         """Create environment with encrypted tokens."""
         encrypted_token = encrypt_value(token) if token else None
@@ -47,6 +69,8 @@ class EnvironmentRepository(BaseRepository[Environment]):
             ca_bundle_ref=ca_bundle_ref,
             rbac_enabled=rbac_enabled,
             rbac_sync_mode=rbac_sync_mode,
+            is_shared=is_shared,
+            created_by_id=created_by_id,
         )
 
     async def update_with_encryption(
@@ -60,6 +84,7 @@ class EnvironmentRepository(BaseRepository[Environment]):
         ca_bundle_ref: str | None = None,
         rbac_enabled: bool | None = None,
         rbac_sync_mode: RBACSyncMode | None = None,
+        is_shared: bool | None = None,
     ) -> Environment | None:
         """Update environment with encrypted tokens."""
         env = await self.get_by_name(name)
@@ -82,6 +107,8 @@ class EnvironmentRepository(BaseRepository[Environment]):
             env.rbac_enabled = rbac_enabled
         if rbac_sync_mode is not None:
             env.rbac_sync_mode = rbac_sync_mode
+        if is_shared is not None:
+            env.is_shared = is_shared
 
         await self.session.flush()
         await self.session.refresh(env)

@@ -21,6 +21,9 @@ class AuthValidationResult:
     """Result of pre-flight auth validation."""
 
     can_proceed: bool
+    can_enable_auth: bool
+    has_valid_token: bool
+    superuser_roles_configured: bool
     warnings: list[str]
     errors: list[str]
     current_config: dict[str, Any]
@@ -93,11 +96,13 @@ class PulsarAuthService:
         3. Check for existing tenant admins
 
         Returns:
-            AuthValidationResult with can_proceed flag, warnings, and errors
+            AuthValidationResult with flags, warnings, and errors
         """
         warnings: list[str] = []
         errors: list[str] = []
         current_config: dict[str, Any] = {}
+        has_valid_token = False
+        superuser_roles_configured = False
 
         # 1. Try to get current auth status (validates connectivity)
         try:
@@ -106,6 +111,9 @@ class PulsarAuthService:
             errors.append(f"Cannot connect to Pulsar broker: {e}")
             return AuthValidationResult(
                 can_proceed=False,
+                can_enable_auth=False,
+                has_valid_token=False,
+                superuser_roles_configured=False,
                 warnings=warnings,
                 errors=errors,
                 current_config=current_config,
@@ -117,7 +125,9 @@ class PulsarAuthService:
 
         # 3. Check for superUserRoles
         super_user_roles = current_config.get("superUserRoles", [])
-        if not super_user_roles:
+        if super_user_roles:
+            superuser_roles_configured = True
+        else:
             errors.append(
                 "No superUserRoles configured on broker. "
                 "You must configure superUserRoles in broker.conf before enabling auth."
@@ -126,6 +136,7 @@ class PulsarAuthService:
         # 4. Try to verify we have superuser access by listing tenants
         try:
             tenants = await self.pulsar.get_tenants()
+            has_valid_token = True
             if not tenants:
                 warnings.append("No tenants found. Consider creating tenants before enabling auth.")
         except Exception as e:
@@ -147,8 +158,13 @@ class PulsarAuthService:
             pass
 
         can_proceed = len(errors) == 0
+        can_enable_auth = has_valid_token and superuser_roles_configured
+
         return AuthValidationResult(
             can_proceed=can_proceed,
+            can_enable_auth=can_enable_auth,
+            has_valid_token=has_valid_token,
+            superuser_roles_configured=superuser_roles_configured,
             warnings=warnings,
             errors=errors,
             current_config=current_config,

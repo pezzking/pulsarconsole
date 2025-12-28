@@ -1,4 +1,4 @@
-"""Pulsar Manager API - FastAPI Application."""
+"""Pulsar Console API - FastAPI Application."""
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -14,9 +14,6 @@ from app.core.logging import get_logger, setup_logging
 from app.core.redis import close_redis, init_redis
 from app.middleware import ErrorHandlerMiddleware, RequestLoggingMiddleware
 
-# Import routers (legacy - will be replaced with new API structure)
-from app.routers import clusters, namespaces, tenants, topics
-
 # Import new API v1 router
 from app.api.v1 import router as api_v1_router
 
@@ -30,7 +27,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager."""
     # Startup
     logger.info(
-        "Starting Pulsar Manager API",
+        "Starting Pulsar Console API",
         app_name=settings.app_name,
         environment=settings.app_env,
         debug=settings.debug,
@@ -67,14 +64,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     # Shutdown
-    logger.info("Shutting down Pulsar Manager API")
+    logger.info("Shutting down Pulsar Console API")
     await close_db()
     await close_redis()
 
 
 # Create FastAPI application
 app = FastAPI(
-    title="Pulsar Manager API",
+    title="Pulsar Console API",
     description="Modern management and monitoring API for Apache Pulsar",
     version="0.1.0",
     lifespan=lifespan,
@@ -166,33 +163,11 @@ async def ready_check() -> dict:
 async def root() -> dict:
     """Root endpoint."""
     return {
-        "message": "Pulsar Manager API",
+        "message": "Pulsar Console API",
         "version": "0.1.0",
         "docs": "/docs" if settings.debug else None,
     }
 
-
-# Include legacy routers (will be migrated to /api/v1)
-app.include_router(
-    tenants.router,
-    prefix="/pulsar-manager/admin/v2",
-    tags=["tenants (legacy)"],
-)
-app.include_router(
-    clusters.router,
-    prefix="/pulsar-manager/admin/v2",
-    tags=["clusters (legacy)"],
-)
-app.include_router(
-    namespaces.router,
-    prefix="/pulsar-manager/admin/v2",
-    tags=["namespaces (legacy)"],
-)
-app.include_router(
-    topics.router,
-    prefix="/pulsar-manager/admin/v2",
-    tags=["topics (legacy)"],
-)
 
 # New API v1 routers
 app.include_router(api_v1_router, prefix="/api/v1")

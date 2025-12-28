@@ -164,11 +164,3 @@ export function getAccessToken(): string | null {
 }
 
 export default api;
-
-// Legacy API for backwards compatibility with old endpoints
-export const legacyApi = axios.create({
-    baseURL: import.meta.env.VITE_LEGACY_API_URL || "/pulsar-manager/admin/v2",
-    headers: {
-        "Content-Type": "application/json",
-    },
-});

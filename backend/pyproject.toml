@@ -1,12 +1,12 @@
 [project]
-name = "pulsar-manager-api"
+name = "pulsar-console-api"
 version = "0.1.0"
-description = "Modern Pulsar Manager API - FastAPI backend"
+description = "Modern Pulsar Console API - FastAPI backend"
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "Pulsar Manager Team"}
+    {name = "Pulsar Console Team"}
 ]
 dependencies = [
     # Web Framework
