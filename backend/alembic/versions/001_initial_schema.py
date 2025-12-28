@@ -1,9 +1,14 @@
 """Initial database schema.
 
-Revision ID: 20251226_000001
-Revises:
-Create Date: 2025-12-26 00:00:01.000000+00:00
+Creates core tables for Pulsar Console:
+- environments: Pulsar cluster configurations
+- audit_events: Activity logging
+- topic_stats, subscription_stats, broker_stats: Metrics
+- aggregations: Computed metrics
 
+Revision ID: 001
+Revises: None
+Create Date: 2025-12-27
 """
 
 from typing import Sequence, Union
@@ -13,7 +18,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "20251226_000001"
+revision: str = "001"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -21,6 +26,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Create initial database schema."""
+
+    # Create authmode enum
+    authmode = postgresql.ENUM(
+        "none", "token", "tls", "oidc",
+        name="authmode", create_type=False
+    )
+    authmode.create(op.get_bind(), checkfirst=True)
 
     # Create environments table
     op.create_table(
@@ -30,12 +42,13 @@ def upgrade() -> None:
         sa.Column("admin_url", sa.String(512), nullable=False),
         sa.Column(
             "auth_mode",
-            sa.Enum("none", "token", "tls", name="authmode"),
+            sa.Enum("none", "token", "tls", "oidc", name="authmode"),
             nullable=False,
             server_default="none",
         ),
         sa.Column("token_encrypted", sa.Text, nullable=True),
         sa.Column("ca_bundle_ref", sa.Text, nullable=True),
+        sa.Column("is_active", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -49,8 +62,10 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
     )
+    op.create_index("ix_environments_is_active", "environments", ["is_active"])
 
     # Create audit_events table
+    # Note: user_id FK will be added by auth_rbac migration after users table exists
     op.create_table(
         "audit_events",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
@@ -60,6 +75,8 @@ def upgrade() -> None:
         sa.Column("request_params", postgresql.JSONB, nullable=True),
         sa.Column("status", sa.String(50), nullable=False),
         sa.Column("error_message", sa.Text, nullable=True),
+        sa.Column("user_id", sa.String(36), nullable=True, index=True),
+        sa.Column("user_email", sa.String(255), nullable=True),
         sa.Column(
             "timestamp",
             sa.DateTime(timezone=True),

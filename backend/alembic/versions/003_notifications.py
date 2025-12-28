@@ -1,20 +1,21 @@
-"""Add notifications table.
+"""Notifications table.
 
-Revision ID: 20251227_000002
-Revises: 20251227_000001
+Creates the notifications table for system alerts and messages.
+
+Revision ID: 003
+Revises: 002
 Create Date: 2025-12-27
 """
 
 from typing import Sequence, Union
 
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
-from alembic import op
-
 # revision identifiers, used by Alembic.
-revision: str = "20251227_000002"
-down_revision: Union[str, None] = "20251227_000001"
+revision: str = "003"
+down_revision: Union[str, None] = "002"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -31,8 +32,8 @@ def upgrade() -> None:
         sa.Column("resource_type", sa.String(50), nullable=True),
         sa.Column("resource_id", sa.String(512), nullable=True),
         sa.Column("extra_data", postgresql.JSONB, nullable=True),
-        sa.Column("is_read", sa.Boolean, nullable=False, default=False),
-        sa.Column("is_dismissed", sa.Boolean, nullable=False, default=False),
+        sa.Column("is_read", sa.Boolean, nullable=False, server_default="false"),
+        sa.Column("is_dismissed", sa.Boolean, nullable=False, server_default="false"),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

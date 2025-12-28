@@ -1,21 +1,31 @@
-"""Add authentication and RBAC tables.
+"""Authentication and RBAC tables.
 
-Revision ID: 20251227_000003
-Revises: 20251227_000002
+Creates tables for user authentication and role-based access control:
+- users: OIDC-authenticated users
+- sessions: User sessions with tokens
+- permissions: Available permission types
+- roles: Per-environment roles
+- role_permissions: Role to permission mappings
+- user_roles: User to role assignments
+- api_tokens: API access tokens
+- oidc_providers: OIDC provider configurations
+
+Also adds RBAC-related columns to environments table.
+
+Revision ID: 002
+Revises: 001
 Create Date: 2025-12-27
-
 """
 
 from typing import Sequence, Union
 
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
-from alembic import op
-
 # revision identifiers, used by Alembic.
-revision: str = "20251227_000003"
-down_revision: Union[str, None] = "20251227_000002"
+revision: str = "002"
+down_revision: Union[str, None] = "001"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -48,9 +58,6 @@ def upgrade() -> None:
         name="resourcelevel", create_type=False
     )
     resourcelevel.create(op.get_bind(), checkfirst=True)
-
-    # Update authmode enum to include 'oidc'
-    op.execute("ALTER TYPE authmode ADD VALUE IF NOT EXISTS 'oidc'")
 
     # Add new columns to environments table
     op.add_column(
@@ -88,8 +95,12 @@ def upgrade() -> None:
         "environments",
         sa.Column("pulsar_token_secret_key_encrypted", sa.Text(), nullable=True)
     )
+    op.add_column(
+        "environments",
+        sa.Column("superuser_token_encrypted", sa.Text(), nullable=True)
+    )
 
-    # Create users table
+    # Create users table (NO is_superuser - superuser access is via role)
     op.create_table(
         "users",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
@@ -99,7 +110,6 @@ def upgrade() -> None:
         sa.Column("display_name", sa.String(255), nullable=True),
         sa.Column("avatar_url", sa.String(1024), nullable=True),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default="true"),
-        sa.Column("is_superuser", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("last_login_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at",
@@ -335,7 +345,7 @@ def upgrade() -> None:
         ),
     )
 
-    # Create oidc_providers table
+    # Create oidc_providers table (with PKCE support)
     op.create_table(
         "oidc_providers",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
@@ -349,7 +359,8 @@ def upgrade() -> None:
         ),
         sa.Column("issuer_url", sa.String(512), nullable=False),
         sa.Column("client_id", sa.String(255), nullable=False),
-        sa.Column("client_secret_encrypted", sa.Text(), nullable=False),
+        sa.Column("client_secret_encrypted", sa.Text(), nullable=True),  # Nullable for PKCE
+        sa.Column("use_pkce", sa.Boolean(), nullable=False, server_default="true"),
         sa.Column(
             "scopes",
             postgresql.ARRAY(sa.String()),
@@ -374,29 +385,9 @@ def upgrade() -> None:
         ),
     )
 
-    # Add user_id and user_email columns to audit_events
-    op.add_column(
-        "audit_events",
-        sa.Column(
-            "user_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="SET NULL"),
-            nullable=True,
-            index=True
-        )
-    )
-    op.add_column(
-        "audit_events",
-        sa.Column("user_email", sa.String(255), nullable=True)
-    )
-
 
 def downgrade() -> None:
     """Remove authentication and RBAC tables and columns."""
-
-    # Drop audit_events columns
-    op.drop_column("audit_events", "user_email")
-    op.drop_column("audit_events", "user_id")
 
     # Drop tables in reverse order (respecting foreign keys)
     op.drop_table("oidc_providers")
@@ -409,6 +400,7 @@ def downgrade() -> None:
     op.drop_table("users")
 
     # Drop environment columns
+    op.drop_column("environments", "superuser_token_encrypted")
     op.drop_column("environments", "pulsar_token_secret_key_encrypted")
     op.drop_column("environments", "service_account_token_encrypted")
     op.drop_column("environments", "rbac_sync_mode")
@@ -420,5 +412,3 @@ def downgrade() -> None:
     op.execute("DROP TYPE IF EXISTS permissionaction")
     op.execute("DROP TYPE IF EXISTS rbacsyncmode")
     op.execute("DROP TYPE IF EXISTS oidcmode")
-    # Note: We don't remove 'oidc' from authmode as PostgreSQL doesn't support
-    # removing enum values easily and it's safe to leave it
