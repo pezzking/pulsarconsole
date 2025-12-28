@@ -7,25 +7,66 @@ A modern, real-time management UI for Apache Pulsar.
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178c6.svg)
 ![Python](https://img.shields.io/badge/Python-3.11+-3776ab.svg)
 
-## Overview
+## What is Pulsar Console?
 
-Pulsar Console is a sleek, real-time web interface for managing and monitoring Apache Pulsar clusters. Built with React and Python FastAPI, it provides intuitive dashboards, topic management, subscription monitoring, and message browsing — all with a modern dark-themed UI.
+**Pulsar Console** is a comprehensive web-based management interface for [Apache Pulsar](https://pulsar.apache.org/), the cloud-native distributed messaging and streaming platform. It provides DevOps teams, developers, and platform engineers with an intuitive way to:
 
-## Features
+- **Monitor** cluster health, message throughput, and broker status in real-time
+- **Manage** tenants, namespaces, topics, and subscriptions through a visual interface
+- **Debug** message flow by browsing messages without consuming them
+- **Administer** user access with role-based permissions
+- **Operate** multiple Pulsar clusters (dev, staging, production) from a single dashboard
 
-- **Real-time Monitoring** — Live cluster health, message throughput, and broker status
-- **Multi-Environment Support** — Manage multiple Pulsar clusters with quick switching
-- **Topic Management** — Create, delete, and configure topics with partition support
-- **Subscription Management** — Monitor backlogs, skip messages, and reset cursors
-- **Message Browser** — Inspect messages in subscriptions without consuming them
-- **Multi-tenant Support** — Navigate tenants, namespaces, and topics hierarchically
-- **Global Search** — Instantly find topics, subscriptions, consumers, namespaces, and brokers
-- **Notifications** — Automatic alerts for consumer disconnects, broker health issues, and storage warnings
-- **OIDC Authentication** — Secure login with PKCE support (Zitadel, Keycloak, Auth0, etc.)
-- **RBAC** — Role-based access control with customizable permissions
-- **API Tokens** — Generate tokens for programmatic access
-- **Favorites** — Quick access to frequently used tenants, namespaces, topics, and subscriptions
-- **Audit Logging** — Track all management operations
+Unlike the basic Pulsar Manager, Pulsar Console offers a modern dark-themed UI, real-time updates, global search, and enterprise features like OIDC authentication and granular RBAC.
+
+## Key Features
+
+### Cluster Management
+| Feature | Description |
+|---------|-------------|
+| **Multi-Environment Support** | Manage multiple Pulsar clusters with instant switching |
+| **Real-time Dashboard** | Live cluster health, message rates, storage usage, and broker status |
+| **Broker Monitoring** | View broker details, configuration, and health metrics |
+| **Global Search** | Instantly find topics, subscriptions, consumers, namespaces, and brokers |
+
+### Resource Management
+| Feature | Description |
+|---------|-------------|
+| **Tenant Management** | Create, configure, and delete tenants with admin role assignment |
+| **Namespace Management** | Configure retention, TTL, backlog policies, and replication |
+| **Topic Management** | Create partitioned/non-partitioned topics, view statistics, configure policies |
+| **Subscription Management** | Monitor backlogs, skip messages, reset cursors, peek at messages |
+
+### Message Operations
+| Feature | Description |
+|---------|-------------|
+| **Message Browser** | Inspect messages in subscriptions without consuming them |
+| **Message Details** | View payload, properties, publish time, and message metadata |
+| **Backlog Management** | Clear backlogs, skip messages, seek to timestamp |
+
+### Security & Access Control
+| Feature | Description |
+|---------|-------------|
+| **OIDC Authentication** | Login via Zitadel, Keycloak, Auth0, Okta, Azure AD, etc. |
+| **PKCE Support** | Secure browser-based authentication without client secrets |
+| **Role-Based Access Control** | Granular permissions per user, role, and environment |
+| **API Tokens** | Generate tokens for programmatic/CI/CD access |
+| **Audit Logging** | Track all management operations with user attribution |
+
+### Pulsar Authentication Management
+| Feature | Description |
+|---------|-------------|
+| **Auth Status Dashboard** | View authentication/authorization status on the broker |
+| **Permission Management** | Manage namespace and topic permissions for roles |
+| **Superuser Management** | Configure and validate superuser access |
+
+### User Experience
+| Feature | Description |
+|---------|-------------|
+| **Favorites** | Quick access to frequently used resources |
+| **Notifications** | Automatic alerts for consumer disconnects, broker issues, storage warnings |
+| **Dark Theme** | Modern, eye-friendly dark interface |
+| **Responsive Design** | Works on desktop and tablet |
 
 ## Screenshots
 
@@ -48,11 +89,6 @@ Track all management operations with filtering and export capabilities.
 Instantly find topics, subscriptions, consumers, and brokers.
 
 ![Global Search](docs/screenshots/global-search.png)
-
-### Notifications
-Automatic alerts for consumer disconnects, broker issues, and storage warnings.
-
-![Notifications](docs/screenshots/notifications1.png)
 
 ## Quick Start
 
@@ -82,7 +118,7 @@ Automatic alerts for consumer disconnects, broker issues, and storage warnings.
    python -m venv venv
    source venv/bin/activate  # Windows: venv\Scripts\activate
    pip install -r requirements.txt
-   cp .env.example .env      # Edit .env with your Pulsar cluster URL
+   cp .env.example .env      # Edit .env with your settings
    alembic upgrade head      # Run database migrations
    uvicorn app.main:app --reload
    ```
@@ -103,119 +139,217 @@ Automatic alerts for consumer disconnects, broker issues, and storage warnings.
 docker compose --profile full up -d
 ```
 
-## Configuration
+---
 
-### Backend Environment Variables
+## Authentication Configuration
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PULSAR_ADMIN_URL` | Pulsar Admin REST API URL | `http://localhost:8080` |
-| `PULSAR_AUTH_TOKEN` | Authentication token (optional) | — |
-| `DATABASE_URL` | PostgreSQL connection string | — |
-| `REDIS_URL` | Redis connection string | — |
+Pulsar Console has **two independent authentication layers**:
 
-See `backend/.env.example` for all available options.
+1. **Console Authentication** — How users log in to the web UI
+2. **Pulsar API Authentication** — How the Console connects to Pulsar brokers
 
-## Multi-Environment Management
+### Quick Reference
 
-Pulsar Console supports managing multiple Pulsar clusters from a single interface.
+| Scenario | Console Auth | Pulsar Auth | Use Case |
+|----------|--------------|-------------|----------|
+| Local development | Disabled | None | Quick testing |
+| Internal team | OIDC (PKCE) | Token | Secure internal use |
+| Production | OIDC (PKCE) | Token/OAuth | Full security |
+| Open cluster | Disabled | None | Demo/playground |
 
-### Features
+---
 
-- **Add environments** — Configure connections to different Pulsar clusters (dev, staging, production)
-- **Quick switching** — Use the environment selector in the header to switch between clusters
-- **Per-environment auth** — Each environment can have its own authentication settings
-- **Test connectivity** — Verify cluster connections before saving
+## Console Authentication (User Login)
 
-### Environment Settings
+Controls how users authenticate to the Pulsar Console web interface.
 
-| Setting | Description |
-|---------|-------------|
-| Name | Display name (e.g., "Production", "Staging") |
-| Admin URL | Pulsar Admin REST API URL |
-| Auth Mode | `none`, `token`, or `oauth2` |
-| Token | JWT token (when using token auth) |
+### Option 1: No Authentication (Development)
 
-### Managing Environments
+Users can access the Console without logging in. A default admin user is created automatically.
 
-1. Navigate to **Environment** in the sidebar
-2. Click **Add Environment** to configure a new cluster
-3. Use the **environment selector** in the header for quick switching
-4. Edit or delete environments from the Environment page
-
-## Authentication
-
-Pulsar Console supports two independent authentication flows:
-
-### 1. Console Login (User Authentication)
-
-Users authenticate to the Pulsar Console web UI via OIDC with **PKCE** (Proof Key for Code Exchange).
-
-```
-User (Browser) ──► Pulsar Console ──► OIDC Provider (Zitadel, Keycloak, etc.)
-                        │
-                        └── PKCE: No client secret required
+```bash
+# backend/.env
+OIDC_ENABLED=false
 ```
 
-**Configuration:**
+**When to use:** Local development, demos, trusted networks.
+
+### Option 2: OIDC with PKCE (Recommended)
+
+Users authenticate via an OIDC provider using PKCE (Proof Key for Code Exchange). This is the most secure option for browser-based applications.
 
 ```bash
 # backend/.env
 OIDC_ENABLED=true
 OIDC_ISSUER_URL=https://auth.example.com
 OIDC_CLIENT_ID=pulsar-console
-OIDC_USE_PKCE=true                    # Recommended (default)
-# OIDC_CLIENT_SECRET=...              # Optional with PKCE
+OIDC_USE_PKCE=true
+# OIDC_CLIENT_SECRET is NOT required with PKCE
 ```
 
-**OIDC Provider Setup (e.g., Zitadel):**
+**Supported providers:** Zitadel, Keycloak, Auth0, Okta, Azure AD, Google, and any OpenID Connect compliant provider.
 
-| Setting | Value |
-|---------|-------|
-| Application Type | Web |
-| Authentication | PKCE |
-| Redirect URI | `http://localhost:8000/api/v1/auth/callback` |
+#### What is PKCE?
 
-### 2. Pulsar API Authentication
-
-The Console backend connects to Pulsar Admin API using token or client credentials (configured per environment).
+PKCE (Proof Key for Code Exchange) is a security extension to OAuth 2.0 designed for public clients (like browser-based SPAs) that cannot securely store a client secret.
 
 ```
-Pulsar Console (Backend) ──► Pulsar Broker (Admin API)
-                                    │
-                                    └── Token or Client Credentials
+┌─────────────────────────────────────────────────────────────┐
+│  Traditional OAuth (NOT recommended for browsers)           │
+│                                                             │
+│  Browser ──► Backend ──► OIDC Provider                     │
+│                 │                                           │
+│                 └── Client Secret (exposed risk!)          │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  PKCE Flow (Recommended)                                    │
+│                                                             │
+│  Browser ──► Backend ──► OIDC Provider                     │
+│     │                         │                             │
+│     └── code_verifier ────────┘                            │
+│         (one-time, cryptographic proof)                    │
+│                                                             │
+│  ✓ No client secret needed                                 │
+│  ✓ Secure against authorization code interception          │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Note:** Pulsar does not support PKCE — it uses Client Credentials flow for OAuth. This is expected since Pulsar clients are machine-to-machine services, not interactive user flows.
+#### OIDC Provider Setup
 
-**Configuration (per Environment in UI):**
+**Zitadel:**
+1. Create a new Application (Type: Web)
+2. Set Authentication Method to **PKCE**
+3. Add Redirect URI: `http://localhost:8000/api/v1/auth/callback`
+4. Copy the Client ID to your `.env`
 
-| Auth Mode | Description |
-|-----------|-------------|
-| `none` | No authentication |
-| `token` | Static JWT token |
-| `oidc` | OAuth Client Credentials |
+**Keycloak:**
+1. Create a new Client
+2. Set Access Type to **public**
+3. Enable **Standard Flow**
+4. Set Valid Redirect URIs: `http://localhost:8000/api/v1/auth/callback`
 
-### Architecture Overview
+**Auth0:**
+1. Create a new Application (Type: Single Page Application)
+2. PKCE is enabled by default for SPAs
+3. Add Callback URL: `http://localhost:8000/api/v1/auth/callback`
 
+### Option 3: OIDC with Client Secret
+
+For environments where PKCE is not supported, you can use the traditional client secret flow.
+
+```bash
+# backend/.env
+OIDC_ENABLED=true
+OIDC_ISSUER_URL=https://auth.example.com
+OIDC_CLIENT_ID=pulsar-console
+OIDC_CLIENT_SECRET=your-client-secret
+OIDC_USE_PKCE=false
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                    User Authentication                         │
-│                                                                │
-│   Browser ───PKCE───► Console Backend ───► OIDC Provider      │
-│                              │                                 │
-│                              ▼                                 │
-│                       JWT Session                              │
-└────────────────────────────────────────────────────────────────┘
 
-┌────────────────────────────────────────────────────────────────┐
-│                    Pulsar API Access                           │
-│                                                                │
-│   Console Backend ───Token/OAuth───► Pulsar Admin API         │
-│                                                                │
-│   (Client Credentials - no PKCE)                              │
-└────────────────────────────────────────────────────────────────┘
+**When to use:** Legacy OIDC providers that don't support PKCE.
+
+### All Console Auth Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OIDC_ENABLED` | Enable OIDC authentication | `false` |
+| `OIDC_ISSUER_URL` | OIDC provider URL (e.g., `https://auth.example.com`) | — |
+| `OIDC_CLIENT_ID` | OAuth client ID | — |
+| `OIDC_CLIENT_SECRET` | OAuth client secret (optional with PKCE) | — |
+| `OIDC_USE_PKCE` | Use PKCE flow (recommended) | `true` |
+| `OIDC_SCOPES` | OAuth scopes to request | `openid profile email` |
+
+---
+
+## Pulsar API Authentication
+
+Controls how the Console backend connects to Pulsar brokers. This is configured **per environment** in the UI.
+
+### Option 1: No Authentication
+
+For Pulsar clusters without authentication enabled.
+
+```yaml
+# Environment settings in UI
+Auth Mode: none
 ```
+
+### Option 2: Token Authentication
+
+Use a static JWT token for authentication. This is the most common setup.
+
+```yaml
+# Environment settings in UI
+Auth Mode: token
+Token: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Generating a Pulsar token:**
+```bash
+# Using pulsar-admin CLI
+bin/pulsar tokens create --secret-key file:///path/to/secret.key \
+    --subject admin
+
+# Or using the Pulsar Docker container
+docker exec -it pulsar bin/pulsar tokens create \
+    --secret-key file:///pulsar/tokens/secret.key \
+    --subject admin
+```
+
+### Option 3: OAuth/OIDC (Client Credentials)
+
+For Pulsar clusters configured with OAuth authentication.
+
+```yaml
+# Environment settings in UI
+Auth Mode: oidc
+OIDC Mode: passthrough  # or console_only
+```
+
+**Note:** Pulsar uses **Client Credentials** flow (machine-to-machine), not PKCE. This is expected behavior since Pulsar clients are backend services, not interactive browser applications.
+
+### Superuser Token
+
+For managing Pulsar authentication settings (enabling/disabling auth, managing permissions), you can configure a separate superuser token:
+
+```yaml
+# Environment settings in UI
+Superuser Token: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+This token is used for privileged operations like:
+- Viewing authentication status
+- Managing namespace/topic permissions
+- RBAC synchronization with Pulsar
+
+---
+
+## Environment Configuration
+
+### Adding a New Environment
+
+1. Navigate to **Settings > Environments**
+2. Click **Add Environment**
+3. Configure:
+
+| Setting | Description | Example |
+|---------|-------------|---------|
+| Name | Display name | `Production` |
+| Admin URL | Pulsar Admin REST API | `https://pulsar.example.com:8443` |
+| Auth Mode | `none`, `token`, or `oidc` | `token` |
+| Token | JWT token (if using token auth) | `eyJ...` |
+| Superuser Token | Token for auth management | `eyJ...` |
+| RBAC Enabled | Enable role-based permissions | `true` |
+
+4. Click **Test Connection** to verify
+5. Click **Save**
+
+### Switching Environments
+
+Use the environment selector in the top-right header to switch between configured clusters.
+
+---
 
 ## Role-Based Access Control (RBAC)
 
@@ -225,36 +359,79 @@ Pulsar Console includes a built-in RBAC system for managing user permissions.
 
 | Role | Description |
 |------|-------------|
-| `admin` | Full access to all features |
+| `superuser` | Full access to all features including user management |
+| `admin` | Full access to Pulsar resources (tenants, namespaces, topics) |
 | `operator` | Manage topics, subscriptions, and messages |
+| `developer` | Read access plus message publishing |
 | `viewer` | Read-only access to all resources |
 
-### Permissions
+### Permission Levels
 
-Permissions are organized by resource type:
+| Resource | Actions |
+|----------|---------|
+| **Tenants** | `read`, `write`, `delete` |
+| **Namespaces** | `read`, `write`, `delete` |
+| **Topics** | `read`, `write`, `delete` |
+| **Subscriptions** | `read`, `write`, `delete` |
+| **Messages** | `read`, `write` |
+| **Brokers** | `read` |
+| **Settings** | `read`, `write` |
+| **Users** | `read`, `write` |
+| **Audit** | `read` |
 
-- **Tenants** — `tenants:read`, `tenants:write`, `tenants:delete`
-- **Namespaces** — `namespaces:read`, `namespaces:write`, `namespaces:delete`
-- **Topics** — `topics:read`, `topics:write`, `topics:delete`
-- **Subscriptions** — `subscriptions:read`, `subscriptions:write`, `subscriptions:delete`
-- **Messages** — `messages:read`, `messages:write`
-- **Brokers** — `brokers:read`
-- **Settings** — `settings:read`, `settings:write`
+### First User Behavior
 
-### API Tokens
+When OIDC is enabled and no users exist:
+1. The first user to log in is automatically assigned the **superuser** role
+2. Subsequent users must be approved and assigned roles by an admin
 
-Generate API tokens for programmatic access:
+---
+
+## API Tokens
+
+Generate API tokens for programmatic access (CI/CD, scripts, automation).
+
+### Creating a Token
 
 1. Navigate to **Settings > API Tokens**
 2. Click **Create Token**
-3. Set name, expiration, and permissions
-4. Copy the token (shown only once)
+3. Configure name, expiration, and permissions
+4. Copy the token (shown only once!)
+
+### Using API Tokens
 
 ```bash
-# Example: Use token with curl
+# Example: List tenants
 curl -H "Authorization: Bearer <token>" \
   http://localhost:8000/api/v1/tenants
+
+# Example: Get topic stats
+curl -H "Authorization: Bearer <token>" \
+  http://localhost:8000/api/v1/topics/public/default/my-topic/stats
 ```
+
+---
+
+## Configuration Reference
+
+### Backend Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | — |
+| `REDIS_URL` | Redis connection string | — |
+| `SECRET_KEY` | JWT signing key | — |
+| `OIDC_ENABLED` | Enable OIDC authentication | `false` |
+| `OIDC_ISSUER_URL` | OIDC provider URL | — |
+| `OIDC_CLIENT_ID` | OAuth client ID | — |
+| `OIDC_CLIENT_SECRET` | OAuth client secret | — |
+| `OIDC_USE_PKCE` | Use PKCE flow | `true` |
+| `CORS_ORIGINS` | Allowed CORS origins | `http://localhost:5173` |
+| `LOG_LEVEL` | Logging level | `INFO` |
+
+See `backend/.env.example` for the complete list.
+
+---
 
 ## Tech Stack
 
