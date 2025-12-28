@@ -189,6 +189,7 @@ export interface EnvironmentCreate {
   name: string;
   admin_url: string;
   auth_mode?: 'none' | 'token' | 'oidc';
+  oidc_mode?: 'none' | 'console_only' | 'passthrough';
   token?: string;
   ca_bundle_ref?: string;
   validate_connectivity?: boolean;
