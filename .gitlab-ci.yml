@@ -1,0 +1,141 @@
+# =============================================================================
+# Pulsar Console - GitLab CI/CD Pipeline
+# =============================================================================
+# Builds Docker images (amd64) and pushes to Quay registry
+#
+# Required CI/CD Variables:
+#   - QUAY_IT_USERNAME: Quay registry username
+#   - QUAY_IT_PASSWORD: Quay registry password
+# =============================================================================
+
+stages:
+  - build
+  - push
+
+variables:
+  # Registry configuration
+  REGISTRY: quay.lvm.local
+  REGISTRY_PATH: lvmit/pulsarconsole
+  
+  # Image names
+  FRONTEND_IMAGE: ${REGISTRY}/${REGISTRY_PATH}-frontend
+  BACKEND_IMAGE: ${REGISTRY}/${REGISTRY_PATH}-backend
+  
+  # Docker configuration
+  DOCKER_BUILDKIT: "1"
+  DOCKER_DRIVER: overlay2
+
+# =============================================================================
+# Build Stage
+# =============================================================================
+
+.build-template: &build-template
+  stage: build
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  before_script:
+    - docker info
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+build-frontend:
+  <<: *build-template
+  script:
+    - |
+      echo "Building frontend image..."
+      docker build \
+        --platform linux/amd64 \
+        --tag ${FRONTEND_IMAGE}:${CI_COMMIT_SHA} \
+        --file Dockerfile.frontend \
+        .
+    - docker save ${FRONTEND_IMAGE}:${CI_COMMIT_SHA} -o frontend.tar
+  artifacts:
+    paths:
+      - frontend.tar
+    expire_in: 1 hour
+
+build-backend:
+  <<: *build-template
+  script:
+    - |
+      echo "Building backend image..."
+      docker build \
+        --platform linux/amd64 \
+        --tag ${BACKEND_IMAGE}:${CI_COMMIT_SHA} \
+        --file backend/Dockerfile \
+        backend/
+    - docker save ${BACKEND_IMAGE}:${CI_COMMIT_SHA} -o backend.tar
+  artifacts:
+    paths:
+      - backend.tar
+    expire_in: 1 hour
+
+# =============================================================================
+# Push Stage
+# =============================================================================
+
+.push-template: &push-template
+  stage: push
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  before_script:
+    - docker info
+    - echo "${QUAY_IT_PASSWORD}" | docker login ${REGISTRY} -u "${QUAY_IT_USERNAME}" --password-stdin
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
+
+push-frontend:
+  <<: *push-template
+  needs:
+    - build-frontend
+  script:
+    - docker load -i frontend.tar
+    - |
+      # Tag with commit SHA
+      echo "Pushing ${FRONTEND_IMAGE}:${CI_COMMIT_SHA}..."
+      docker push ${FRONTEND_IMAGE}:${CI_COMMIT_SHA}
+      
+      # Tag as latest for main branch
+      if [ "$CI_COMMIT_BRANCH" = "main" ]; then
+        echo "Tagging as latest..."
+        docker tag ${FRONTEND_IMAGE}:${CI_COMMIT_SHA} ${FRONTEND_IMAGE}:latest
+        docker push ${FRONTEND_IMAGE}:latest
+      fi
+      
+      # Tag with version for tags
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        echo "Tagging as ${CI_COMMIT_TAG}..."
+        docker tag ${FRONTEND_IMAGE}:${CI_COMMIT_SHA} ${FRONTEND_IMAGE}:${CI_COMMIT_TAG}
+        docker push ${FRONTEND_IMAGE}:${CI_COMMIT_TAG}
+      fi
+
+push-backend:
+  <<: *push-template
+  needs:
+    - build-backend
+  script:
+    - docker load -i backend.tar
+    - |
+      # Tag with commit SHA
+      echo "Pushing ${BACKEND_IMAGE}:${CI_COMMIT_SHA}..."
+      docker push ${BACKEND_IMAGE}:${CI_COMMIT_SHA}
+      
+      # Tag as latest for main branch
+      if [ "$CI_COMMIT_BRANCH" = "main" ]; then
+        echo "Tagging as latest..."
+        docker tag ${BACKEND_IMAGE}:${CI_COMMIT_SHA} ${BACKEND_IMAGE}:latest
+        docker push ${BACKEND_IMAGE}:latest
+      fi
+      
+      # Tag with version for tags
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        echo "Tagging as ${CI_COMMIT_TAG}..."
+        docker tag ${BACKEND_IMAGE}:${CI_COMMIT_SHA} ${BACKEND_IMAGE}:${CI_COMMIT_TAG}
+        docker push ${BACKEND_IMAGE}:${CI_COMMIT_TAG}
+      fi
+
