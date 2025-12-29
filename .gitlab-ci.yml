@@ -59,13 +59,8 @@ variables:
 build-frontend:
   <<: *build-template
   script:
-    - |
-      echo "Building frontend image..."
-      docker build \
-        --platform linux/amd64 \
-        --tag ${FRONTEND_IMAGE}:${CI_COMMIT_SHA} \
-        --file Dockerfile.frontend \
-        .
+    - echo "Building frontend image..."
+    - docker build --platform linux/amd64 --tag ${FRONTEND_IMAGE}:${CI_COMMIT_SHA} --file Dockerfile.frontend .
     - docker save ${FRONTEND_IMAGE}:${CI_COMMIT_SHA} -o frontend.tar
   artifacts:
     paths:
@@ -75,13 +70,8 @@ build-frontend:
 build-backend:
   <<: *build-template
   script:
-    - |
-      echo "Building backend image..."
-      docker build \
-        --platform linux/amd64 \
-        --tag ${BACKEND_IMAGE}:${CI_COMMIT_SHA} \
-        --file backend/Dockerfile \
-        backend/
+    - echo "Building backend image..."
+    - docker build --platform linux/amd64 --tag ${BACKEND_IMAGE}:${CI_COMMIT_SHA} --file backend/Dockerfile backend/
     - docker save ${BACKEND_IMAGE}:${CI_COMMIT_SHA} -o backend.tar
   artifacts:
     paths:
