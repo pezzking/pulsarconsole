@@ -42,9 +42,14 @@ variables:
     - docker info
     # Login to Docker Hub if credentials are available (avoids rate limiting)
     - |
+      echo "Checking Docker Hub credentials..."
+      echo "DOCKERHUB_USERNAME is set: $([ -n "$DOCKERHUB_USERNAME" ] && echo 'yes' || echo 'no')"
       if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_PASSWORD" ]; then
-        echo "Logging in to Docker Hub..."
+        echo "Logging in to Docker Hub as ${DOCKERHUB_USERNAME}..."
         echo "${DOCKERHUB_PASSWORD}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+      else
+        echo "WARNING: Docker Hub credentials not found. May hit rate limits."
+        echo "Set DOCKERHUB_USERNAME and DOCKERHUB_PASSWORD in GitLab CI/CD variables."
       fi
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
