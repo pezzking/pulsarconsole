@@ -233,8 +233,8 @@ async def get_current_user(
     """
     from app.config import settings
     
-    # Development bypass: return a dev user if auth is disabled
-    if settings.auth_disabled:
+    # Development bypass: return a dev user if OIDC is not enabled
+    if not settings.oidc_enabled:
         return await _get_or_create_dev_user(db)
     
     token = None
@@ -440,8 +440,8 @@ async def get_current_approved_user(
     """
     from app.config import settings
     
-    # Skip role check when auth is disabled (SYSTEM user)
-    if settings.auth_disabled:
+    # Skip role check when OIDC is disabled (SYSTEM user in dev mode)
+    if not settings.oidc_enabled:
         return current_user
     
     if not await has_any_role(current_user, db):
