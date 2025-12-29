@@ -98,6 +98,25 @@ services:
       - pulsar-console
 
   # ==========================================================================
+  # Database Migrations (runs once at startup)
+  # ==========================================================================
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pulsar-console-migrate
+    entrypoint: ["alembic", "upgrade", "head"]
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://pulsar:pulsar@postgres:5432/pulsar_console
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - pulsar-console
+    profiles:
+      - full
+
+  # ==========================================================================
   # Pulsar Console API (FastAPI)
   # ==========================================================================
   api:
@@ -105,6 +124,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: pulsar-console-api
+    entrypoint: []
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8000:8000"
     environment:
@@ -121,6 +142,8 @@ services:
       - SECRET_KEY=dev-secret-key-change-in-production
       - ENCRYPTION_KEY=dev-encryption-key-change-in-prod
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -146,7 +169,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: pulsar-console-worker
-    command: celery -A app.worker.celery_app worker --loglevel=info
+    entrypoint: []
+    command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info"]
     environment:
       - APP_ENV=development
       - DATABASE_URL=postgresql+asyncpg://pulsar:pulsar@postgres:5432/pulsar_console
@@ -157,6 +181,8 @@ services:
       - SECRET_KEY=dev-secret-key-change-in-production
       - ENCRYPTION_KEY=dev-encryption-key-change-in-prod
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -177,7 +203,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: pulsar-console-beat
-    command: celery -A app.worker.celery_app beat --loglevel=info
+    entrypoint: []
+    command: ["celery", "-A", "app.worker.celery_app", "beat", "--loglevel=info"]
     environment:
       - APP_ENV=development
       - DATABASE_URL=postgresql+asyncpg://pulsar:pulsar@postgres:5432/pulsar_console
