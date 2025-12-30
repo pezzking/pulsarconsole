@@ -443,6 +443,7 @@ async def get_current_approved_user(
     """
     Get the current user if they have been approved (have at least one role).
 
+    Global admins are always considered approved.
     Users without any roles are considered "pending approval" and will
     receive a 403 Forbidden response.
 
@@ -452,6 +453,10 @@ async def get_current_approved_user(
     
     # Skip role check when OIDC is disabled (SYSTEM user in dev mode)
     if not settings.oidc_enabled:
+        return current_user
+
+    # Global admins are always approved
+    if current_user.is_global_admin:
         return current_user
     
     if not await has_any_role(current_user, db):

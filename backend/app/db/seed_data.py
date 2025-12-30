@@ -116,48 +116,85 @@ PERMISSION_DEFINITIONS = [
 #   - "tenant/namespace/topic" (specific topic)
 DEFAULT_ROLES = {
     "superuser": {
-        "description": "Full administrative access to everything",
+        "description": "Full system access - all permissions on all resources",
+        "is_system": True,
         "permissions": [
-            ("admin", "cluster", None),  # Full cluster admin
+            # All admin permissions
+            (PermissionAction.admin, ResourceLevel.cluster, "*"),
+            (PermissionAction.admin, ResourceLevel.tenant, "*"),
+            (PermissionAction.admin, ResourceLevel.namespace, "*"),
+            # All read/write permissions
+            (PermissionAction.read, ResourceLevel.cluster, "*"),
+            (PermissionAction.read, ResourceLevel.tenant, "*"),
+            (PermissionAction.read, ResourceLevel.namespace, "*"),
+            (PermissionAction.read, ResourceLevel.topic, "*"),
+            (PermissionAction.write, ResourceLevel.tenant, "*"),
+            (PermissionAction.write, ResourceLevel.namespace, "*"),
+            (PermissionAction.write, ResourceLevel.topic, "*"),
+            # All topic operations
+            (PermissionAction.produce, ResourceLevel.topic, "*"),
+            (PermissionAction.consume, ResourceLevel.topic, "*"),
+            # All namespace operations
+            (PermissionAction.functions, ResourceLevel.namespace, "*"),
+            (PermissionAction.sources, ResourceLevel.namespace, "*"),
+            (PermissionAction.sinks, ResourceLevel.namespace, "*"),
+            (PermissionAction.packages, ResourceLevel.namespace, "*"),
         ],
     },
     "admin": {
-        "description": "Tenant and namespace administration",
+        "description": "Administrative access to tenants and namespaces",
+        "is_system": True,
         "permissions": [
-            ("admin", "tenant", None),
-            ("admin", "namespace", None),
+            (PermissionAction.admin, ResourceLevel.tenant, "*"),
+            (PermissionAction.admin, ResourceLevel.namespace, "*"),
+            (PermissionAction.read, ResourceLevel.cluster, "*"),
+            (PermissionAction.read, ResourceLevel.tenant, "*"),
+            (PermissionAction.read, ResourceLevel.namespace, "*"),
+            (PermissionAction.read, ResourceLevel.topic, "*"),
+            (PermissionAction.write, ResourceLevel.tenant, "*"),
+            (PermissionAction.write, ResourceLevel.namespace, "*"),
+            (PermissionAction.write, ResourceLevel.topic, "*"),
+            (PermissionAction.produce, ResourceLevel.topic, "*"),
+            (PermissionAction.consume, ResourceLevel.topic, "*"),
+            (PermissionAction.functions, ResourceLevel.namespace, "*"),
+            (PermissionAction.sources, ResourceLevel.namespace, "*"),
+            (PermissionAction.sinks, ResourceLevel.namespace, "*"),
+            (PermissionAction.packages, ResourceLevel.namespace, "*"),
         ],
     },
     "operator": {
-        "description": "Day-to-day operations: read all, manage topics and messages",
+        "description": "Operational access - read all, manage topics and messages",
+        "is_system": True,
         "permissions": [
-            ("read", "cluster", None),
-            ("read", "tenant", None),
-            ("read", "namespace", None),
-            ("read", "topic", None),
-            ("write", "topic", None),
-            ("produce", "topic", None),
-            ("consume", "topic", None),
+            (PermissionAction.read, ResourceLevel.cluster, "*"),
+            (PermissionAction.read, ResourceLevel.tenant, "*"),
+            (PermissionAction.read, ResourceLevel.namespace, "*"),
+            (PermissionAction.read, ResourceLevel.topic, "*"),
+            (PermissionAction.write, ResourceLevel.topic, "*"),
+            (PermissionAction.produce, ResourceLevel.topic, "*"),
+            (PermissionAction.consume, ResourceLevel.topic, "*"),
         ],
     },
     "developer": {
-        "description": "Read access and message production/consumption",
+        "description": "Developer access - read all, produce and consume messages",
+        "is_system": True,
         "permissions": [
-            ("read", "cluster", None),
-            ("read", "tenant", None),
-            ("read", "namespace", None),
-            ("read", "topic", None),
-            ("produce", "topic", None),
-            ("consume", "topic", None),
+            (PermissionAction.read, ResourceLevel.cluster, "*"),
+            (PermissionAction.read, ResourceLevel.tenant, "*"),
+            (PermissionAction.read, ResourceLevel.namespace, "*"),
+            (PermissionAction.read, ResourceLevel.topic, "*"),
+            (PermissionAction.produce, ResourceLevel.topic, "*"),
+            (PermissionAction.consume, ResourceLevel.topic, "*"),
         ],
     },
     "viewer": {
         "description": "Read-only access to all resources",
+        "is_system": True,
         "permissions": [
-            ("read", "cluster", None),
-            ("read", "tenant", None),
-            ("read", "namespace", None),
-            ("read", "topic", None),
+            (PermissionAction.read, ResourceLevel.cluster, "*"),
+            (PermissionAction.read, ResourceLevel.tenant, "*"),
+            (PermissionAction.read, ResourceLevel.namespace, "*"),
+            (PermissionAction.read, ResourceLevel.topic, "*"),
         ],
     },
 }
@@ -244,7 +281,11 @@ async def seed_default_roles(
 
         # Add permissions to the role
         for action, resource_level, resource_pattern in role_def["permissions"]:
-            perm_key = f"{action}:{resource_level}"
+            # Handle both enum objects and strings for backward compatibility/flexibility
+            action_val = action.value if hasattr(action, "value") else action
+            resource_level_val = resource_level.value if hasattr(resource_level, "value") else resource_level
+            perm_key = f"{action_val}:{resource_level_val}"
+            
             if perm_key in permissions:
                 role_permission = RolePermission(
                     role_id=role.id,

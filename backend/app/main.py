@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             seed_service = SeedService(session)
             await seed_service.seed_all_environments()
             await session.commit()
-        logger.info("Default roles and permissions seeded")
+        # Log message is now handled within seed_all_environments for better accuracy
     except Exception as e:
         logger.warning("Failed to seed default data", error=str(e))
 

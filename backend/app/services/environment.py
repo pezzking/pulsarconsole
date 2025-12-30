@@ -200,6 +200,17 @@ class EnvironmentService:
         try:
             await seed_rbac_data(self.session, env.id)
             logger.info("Seeded default RBAC roles for environment", environment=name)
+            
+            # If the creator is a global admin, assign them the superuser role for this environment
+            if created_by_id:
+                from app.repositories.user import UserRepository
+                user_repo = UserRepository(self.session)
+                user = await user_repo.get_by_id(created_by_id)
+                if user and user.is_global_admin:
+                    from app.services.seed import SeedService
+                    seed_service = SeedService(self.session)
+                    await seed_service.assign_user_to_superuser_role(created_by_id, env.id)
+                    logger.info("Assigned global admin to superuser role for environment", user_id=str(created_by_id), environment=name)
         except Exception as e:
             logger.warning(
                 "Failed to seed RBAC roles for environment",

@@ -10,126 +10,15 @@ from app.models.permission import Permission, PermissionAction, ResourceLevel
 from app.models.role import Role
 from app.models.role_permission import RolePermission
 from app.models.user_role import UserRole
+from app.db.seed_data import (
+    seed_rbac_data, 
+    seed_permissions, 
+    seed_default_roles, 
+    PERMISSION_DEFINITIONS,
+    DEFAULT_ROLES
+)
 
 logger = get_logger(__name__)
-
-# =============================================================================
-# Default Permissions
-# =============================================================================
-
-DEFAULT_PERMISSIONS = [
-    # Topic-level actions
-    (PermissionAction.produce, ResourceLevel.topic, "Produce messages to topics"),
-    (PermissionAction.consume, ResourceLevel.topic, "Consume messages from topics"),
-    # Namespace-level actions
-    (PermissionAction.functions, ResourceLevel.namespace, "Manage Pulsar Functions"),
-    (PermissionAction.sources, ResourceLevel.namespace, "Manage Pulsar IO sources"),
-    (PermissionAction.sinks, ResourceLevel.namespace, "Manage Pulsar IO sinks"),
-    (PermissionAction.packages, ResourceLevel.namespace, "Manage packages"),
-    # Administrative actions - cluster level
-    (PermissionAction.admin, ResourceLevel.cluster, "Full cluster administration"),
-    (PermissionAction.read, ResourceLevel.cluster, "Read cluster information"),
-    # Administrative actions - tenant level
-    (PermissionAction.admin, ResourceLevel.tenant, "Full tenant administration"),
-    (PermissionAction.read, ResourceLevel.tenant, "Read tenant information"),
-    (PermissionAction.write, ResourceLevel.tenant, "Create/modify tenants"),
-    # Administrative actions - namespace level
-    (PermissionAction.admin, ResourceLevel.namespace, "Full namespace administration"),
-    (PermissionAction.read, ResourceLevel.namespace, "Read namespace information"),
-    (PermissionAction.write, ResourceLevel.namespace, "Create/modify namespaces"),
-    # Administrative actions - topic level
-    (PermissionAction.read, ResourceLevel.topic, "Read topic information"),
-    (PermissionAction.write, ResourceLevel.topic, "Create/modify/delete topics"),
-]
-
-# =============================================================================
-# Default Roles with their permissions
-# =============================================================================
-
-DEFAULT_ROLES = {
-    "superuser": {
-        "description": "Full system access - all permissions on all resources",
-        "is_system": True,
-        "permissions": [
-            # All admin permissions
-            (PermissionAction.admin, ResourceLevel.cluster),
-            (PermissionAction.admin, ResourceLevel.tenant),
-            (PermissionAction.admin, ResourceLevel.namespace),
-            # All read/write permissions
-            (PermissionAction.read, ResourceLevel.cluster),
-            (PermissionAction.read, ResourceLevel.tenant),
-            (PermissionAction.read, ResourceLevel.namespace),
-            (PermissionAction.read, ResourceLevel.topic),
-            (PermissionAction.write, ResourceLevel.tenant),
-            (PermissionAction.write, ResourceLevel.namespace),
-            (PermissionAction.write, ResourceLevel.topic),
-            # All topic operations
-            (PermissionAction.produce, ResourceLevel.topic),
-            (PermissionAction.consume, ResourceLevel.topic),
-            # All namespace operations
-            (PermissionAction.functions, ResourceLevel.namespace),
-            (PermissionAction.sources, ResourceLevel.namespace),
-            (PermissionAction.sinks, ResourceLevel.namespace),
-            (PermissionAction.packages, ResourceLevel.namespace),
-        ],
-    },
-    "admin": {
-        "description": "Administrative access to tenants and namespaces",
-        "is_system": True,
-        "permissions": [
-            (PermissionAction.admin, ResourceLevel.tenant),
-            (PermissionAction.admin, ResourceLevel.namespace),
-            (PermissionAction.read, ResourceLevel.cluster),
-            (PermissionAction.read, ResourceLevel.tenant),
-            (PermissionAction.read, ResourceLevel.namespace),
-            (PermissionAction.read, ResourceLevel.topic),
-            (PermissionAction.write, ResourceLevel.tenant),
-            (PermissionAction.write, ResourceLevel.namespace),
-            (PermissionAction.write, ResourceLevel.topic),
-            (PermissionAction.produce, ResourceLevel.topic),
-            (PermissionAction.consume, ResourceLevel.topic),
-            (PermissionAction.functions, ResourceLevel.namespace),
-            (PermissionAction.sources, ResourceLevel.namespace),
-            (PermissionAction.sinks, ResourceLevel.namespace),
-            (PermissionAction.packages, ResourceLevel.namespace),
-        ],
-    },
-    "operator": {
-        "description": "Operational access - read all, manage topics and messages",
-        "is_system": True,
-        "permissions": [
-            (PermissionAction.read, ResourceLevel.cluster),
-            (PermissionAction.read, ResourceLevel.tenant),
-            (PermissionAction.read, ResourceLevel.namespace),
-            (PermissionAction.read, ResourceLevel.topic),
-            (PermissionAction.write, ResourceLevel.topic),
-            (PermissionAction.produce, ResourceLevel.topic),
-            (PermissionAction.consume, ResourceLevel.topic),
-        ],
-    },
-    "developer": {
-        "description": "Developer access - read all, produce and consume messages",
-        "is_system": True,
-        "permissions": [
-            (PermissionAction.read, ResourceLevel.cluster),
-            (PermissionAction.read, ResourceLevel.tenant),
-            (PermissionAction.read, ResourceLevel.namespace),
-            (PermissionAction.read, ResourceLevel.topic),
-            (PermissionAction.produce, ResourceLevel.topic),
-            (PermissionAction.consume, ResourceLevel.topic),
-        ],
-    },
-    "viewer": {
-        "description": "Read-only access to all resources",
-        "is_system": True,
-        "permissions": [
-            (PermissionAction.read, ResourceLevel.cluster),
-            (PermissionAction.read, ResourceLevel.tenant),
-            (PermissionAction.read, ResourceLevel.namespace),
-            (PermissionAction.read, ResourceLevel.topic),
-        ],
-    },
-}
 
 
 class SeedService:
@@ -144,34 +33,17 @@ class SeedService:
 
         Returns a mapping of (action, resource_level) -> permission_id
         """
-        permission_map: dict[tuple[PermissionAction, ResourceLevel], UUID] = {}
-
-        for action, resource_level, description in DEFAULT_PERMISSIONS:
-            # Check if permission exists
-            result = await self.session.execute(
-                select(Permission).where(
-                    Permission.action == action,
-                    Permission.resource_level == resource_level,
-                )
-            )
-            permission = result.scalar_one_or_none()
-
-            if not permission:
-                permission = Permission(
-                    action=action,
-                    resource_level=resource_level,
-                    description=description,
-                )
-                self.session.add(permission)
-                await self.session.flush()
-                logger.info(
-                    "Created permission",
-                    action=action.value,
-                    resource_level=resource_level.value,
-                )
-
-            permission_map[(action, resource_level)] = permission.id
-
+        # Use the logic from seed_data.py but return the map SeedService expects
+        perms = await seed_permissions(self.session)
+        
+        permission_map = {}
+        for key, perm in perms.items():
+            # key is "action:resource_level"
+            action_str, level_str = key.split(":")
+            action = PermissionAction(action_str)
+            level = ResourceLevel(level_str)
+            permission_map[(action, level)] = perm.id
+            
         self._permission_cache = permission_map
         return permission_map
 
@@ -180,53 +52,11 @@ class SeedService:
 
         Returns a mapping of role_name -> role_id
         """
-        # Ensure permissions exist
-        if not self._permission_cache:
-            await self.seed_permissions()
-
-        role_map: dict[str, UUID] = {}
-
-        for role_name, role_config in DEFAULT_ROLES.items():
-            # Check if role exists for this environment
-            result = await self.session.execute(
-                select(Role).where(
-                    Role.name == role_name,
-                    Role.environment_id == environment_id,
-                )
-            )
-            role = result.scalar_one_or_none()
-
-            if not role:
-                role = Role(
-                    name=role_name,
-                    description=role_config["description"],
-                    is_system=role_config["is_system"],
-                    environment_id=environment_id,
-                )
-                self.session.add(role)
-                await self.session.flush()
-                logger.info(
-                    "Created role",
-                    role=role_name,
-                    environment_id=str(environment_id),
-                )
-
-                # Add permissions to role
-                for action, resource_level in role_config["permissions"]:
-                    permission_id = self._permission_cache.get((action, resource_level))
-                    if permission_id:
-                        role_permission = RolePermission(
-                            role_id=role.id,
-                            permission_id=permission_id,
-                            resource_pattern="*",  # All resources
-                        )
-                        self.session.add(role_permission)
-
-                await self.session.flush()
-
-            role_map[role_name] = role.id
-
-        return role_map
+        # We use the existing seed_rbac_data logic which is more robust
+        permissions = await seed_permissions(self.session)
+        roles = await seed_default_roles(self.session, environment_id, permissions)
+        
+        return {name: role.id for name, role in roles.items()}
 
     async def seed_all_environments(self) -> None:
         """Seed roles for all existing environments."""
@@ -238,12 +68,17 @@ class SeedService:
         # First seed permissions
         await self.seed_permissions()
 
+        if not environments:
+            logger.info("No environments found to seed roles for")
+            return
+
         # Then seed roles for each environment
         for env in environments:
             await self.seed_roles_for_environment(env.id)
             logger.info("Seeded roles for environment", environment=env.name)
 
         await self.session.commit()
+        logger.info(f"Seeded roles for {len(environments)} environments")
 
     async def get_superuser_role_id(self, environment_id: UUID) -> UUID | None:
         """Get the superuser role ID for an environment."""
