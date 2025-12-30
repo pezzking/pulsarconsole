@@ -445,14 +445,14 @@ async def get_current_approved_user(
 
     Global admins are always considered approved.
     Users without any roles are considered "pending approval" and will
-    receive a 403 Forbidden response.
+    receive a 403 Forbidden response, UNLESS they are a global admin.
 
-    Raises HTTPException 403 if user has no roles.
+    Raises HTTPException 403 if user is not approved.
     """
     from app.config import settings
     
-    # Skip role check when OIDC is disabled (SYSTEM user in dev mode)
-    if not settings.oidc_enabled:
+    # Skip check for global admins or when OIDC is disabled (dev mode)
+    if current_user.is_global_admin or not settings.oidc_enabled:
         return current_user
 
     # Global admins are always approved
