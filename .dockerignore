@@ -1,0 +1,32 @@
+# Git
+.git
+.github
+.gitlab-ci.yml
+
+# Dependencies
+node_modules
+
+# Build output
+dist
+coverage
+
+# Backend (separate build context)
+backend
+
+# Kubernetes/OpenShift
+k8s
+openshift
+
+# Documentation
+docs
+*.md
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Development
+Makefile
+_local
+*.log

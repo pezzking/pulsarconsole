@@ -1,0 +1,33 @@
+# Git
+.git
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Coverage
+.coverage
+htmlcov
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Tests
+tests
+
+# Documentation
+*.md
+
+# Virtual environments
+.venv
+venv
+
+# IDE
+.idea
+.vscode
