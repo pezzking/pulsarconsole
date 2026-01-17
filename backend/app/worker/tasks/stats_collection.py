@@ -4,7 +4,7 @@ import asyncio
 from datetime import datetime, timezone
 
 from app.config import settings
-from app.core.database import async_session_factory
+from app.core.database import worker_session_factory
 from app.core.logging import get_logger
 from app.core.events import event_bus
 from app.models.stats import BrokerStats, SubscriptionStats, TopicStats
@@ -27,7 +27,7 @@ def run_async(coro):
 
 async def _get_pulsar_client() -> tuple[PulsarAdminService, str] | tuple[None, None]:
     """Get Pulsar client and environment ID from environment configuration."""
-    async with async_session_factory() as session:
+    async with worker_session_factory() as session:
         env_repo = EnvironmentRepository(session)
         envs = await env_repo.get_all(limit=1)
         if not envs:
@@ -101,7 +101,7 @@ async def _collect_topic_stats_async():
 
         # Batch insert stats
         if all_stats:
-            async with async_session_factory() as session:
+            async with worker_session_factory() as session:
                 session.add_all(all_stats)
                 await session.commit()
                 collected = len(all_stats)
@@ -170,7 +170,7 @@ async def _collect_subscription_stats_async():
                 pass
 
         if all_stats:
-            async with async_session_factory() as session:
+            async with worker_session_factory() as session:
                 session.add_all(all_stats)
                 await session.commit()
                 collected = len(all_stats)
@@ -217,7 +217,7 @@ async def _collect_broker_stats_async():
                 )
 
         if all_stats:
-            async with async_session_factory() as session:
+            async with worker_session_factory() as session:
                 session.add_all(all_stats)
                 await session.commit()
                 collected = len(all_stats)

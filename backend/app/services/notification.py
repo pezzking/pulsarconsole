@@ -129,6 +129,12 @@ class NotificationService:
         # Publish event
         await event_bus.publish("NOTIFICATIONS_UPDATED")
 
+        # Dispatch to external notification channels via Celery
+        from app.worker.tasks.notification_delivery import (
+            dispatch_notification_to_channels,
+        )
+        dispatch_notification_to_channels.delay(str(notification.id))
+
         return notification
 
     async def check_consumer_disconnects(

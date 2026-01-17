@@ -86,6 +86,20 @@ from app.schemas.notification import (
     NotificationListResponse,
     NotificationResponse,
 )
+from app.schemas.notification_channel import (
+    EmailConfig,
+    NotificationChannelCreateEmail,
+    NotificationChannelCreateSlack,
+    NotificationChannelCreateWebhook,
+    NotificationChannelListResponse,
+    NotificationChannelResponse,
+    NotificationChannelUpdate,
+    NotificationDeliveryListResponse,
+    NotificationDeliveryResponse,
+    SlackConfig,
+    TestChannelResponse,
+    WebhookConfig,
+)
 
 __all__ = [
     # Common
@@ -165,4 +179,17 @@ __all__ = [
     "NotificationCountResponse",
     "NotificationListResponse",
     "NotificationResponse",
+    # Notification Channels
+    "EmailConfig",
+    "NotificationChannelCreateEmail",
+    "NotificationChannelCreateSlack",
+    "NotificationChannelCreateWebhook",
+    "NotificationChannelListResponse",
+    "NotificationChannelResponse",
+    "NotificationChannelUpdate",
+    "NotificationDeliveryListResponse",
+    "NotificationDeliveryResponse",
+    "SlackConfig",
+    "TestChannelResponse",
+    "WebhookConfig",
 ]
