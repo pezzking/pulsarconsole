@@ -21,6 +21,12 @@ description: Release a new version with Docker image builds
    gh run list --workflow=build-and-publish.yml --limit 3
    ```
 
+## Image Names
+
+Our workflow builds these images to GHCR:
+- `ghcr.io/pezzking/pulsar-console-api`
+- `ghcr.io/pezzking/pulsar-console-ui`
+
 ## Notes
 
 - Do NOT modify anything in `k8s/` directory - leave versions on `latest`
