@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import and_, func, select
 
-from app.core.database import async_session_factory
+from app.core.database import worker_session_factory
 from app.core.logging import get_logger
 from app.models.stats import Aggregation, SubscriptionStats, TopicStats
 from app.worker.celery_app import celery_app
@@ -25,7 +25,7 @@ def run_async(coro):
 
 async def _compute_aggregations_async():
     """Compute aggregations from latest topic and subscription stats."""
-    async with async_session_factory() as session:
+    async with worker_session_factory() as session:
         # Get latest stats per topic using a subquery
         subq = (
             select(

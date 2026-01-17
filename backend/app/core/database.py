@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from app.config import settings
 
@@ -19,7 +20,7 @@ class Base(DeclarativeBase):
     pass
 
 
-# Create async engine
+# Create async engine for API (with connection pooling)
 engine = create_async_engine(
     settings.database_url,
     echo=settings.database_echo,
@@ -28,9 +29,28 @@ engine = create_async_engine(
     pool_pre_ping=True,
 )
 
-# Create session factory
+# Create async engine for Celery workers (no pooling to avoid event loop issues)
+# Celery tasks create new event loops per task, and asyncpg connections are bound
+# to the event loop that created them. Using NullPool ensures each task gets a
+# fresh connection that won't conflict with other event loops.
+worker_engine = create_async_engine(
+    settings.database_url,
+    echo=settings.database_echo,
+    poolclass=NullPool,
+)
+
+# Create session factory for API
 async_session_factory = async_sessionmaker(
     engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
+# Create session factory for Celery workers
+worker_session_factory = async_sessionmaker(
+    worker_engine,
     class_=AsyncSession,
     expire_on_commit=False,
     autocommit=False,

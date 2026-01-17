@@ -14,6 +14,9 @@ from app.models.role_permission import RolePermission
 from app.models.user_role import UserRole
 from app.models.api_token import ApiToken
 from app.models.oidc_provider import OIDCProvider
+from app.models.notification import Notification, NotificationType, NotificationSeverity
+from app.models.notification_channel import NotificationChannel, ChannelType
+from app.models.notification_delivery import NotificationDelivery, DeliveryStatus
 
 __all__ = [
     # Base
@@ -43,4 +46,12 @@ __all__ = [
     "UserRole",
     "ApiToken",
     "OIDCProvider",
+    # Notifications
+    "Notification",
+    "NotificationType",
+    "NotificationSeverity",
+    "NotificationChannel",
+    "ChannelType",
+    "NotificationDelivery",
+    "DeliveryStatus",
 ]

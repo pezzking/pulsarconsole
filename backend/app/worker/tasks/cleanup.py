@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import delete
 
 from app.config import settings
-from app.core.database import async_session_factory
+from app.core.database import worker_session_factory
 from app.core.logging import get_logger
 from app.models.audit import AuditEvent
 from app.models.stats import BrokerStats, SubscriptionStats, TopicStats
@@ -30,7 +30,7 @@ async def _cleanup_old_stats_async(retention_days: int = 7):
     cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
     deleted = {"topic_stats": 0, "subscription_stats": 0, "broker_stats": 0}
 
-    async with async_session_factory() as session:
+    async with worker_session_factory() as session:
         # Delete old topic stats
         result = await session.execute(
             delete(TopicStats).where(TopicStats.collected_at < cutoff)
@@ -58,7 +58,7 @@ async def _cleanup_old_audit_async(retention_days: int = 90):
     """Delete audit events older than retention period."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
 
-    async with async_session_factory() as session:
+    async with worker_session_factory() as session:
         result = await session.execute(
             delete(AuditEvent).where(AuditEvent.timestamp < cutoff)
         )

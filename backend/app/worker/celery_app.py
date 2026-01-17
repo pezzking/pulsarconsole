@@ -15,6 +15,7 @@ celery_app = Celery(
         "app.worker.tasks.aggregation",
         "app.worker.tasks.cleanup",
         "app.worker.tasks.alerts",
+        "app.worker.tasks.notification_delivery",
     ],
 )
 
