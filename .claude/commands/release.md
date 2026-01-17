@@ -13,7 +13,7 @@ description: Release a new version with Docker image builds
 
 2. **Create GitHub release**
    ```bash
-   gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes
+   gh api repos/pezzking/pulsarconsole/releases -f tag_name=vX.Y.Z -f name="vX.Y.Z" -F generate_release_notes=true
    ```
 
 3. **Verify build completion**
