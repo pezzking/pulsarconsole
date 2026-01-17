@@ -25,6 +25,7 @@ import { useDashboardStats, useHealthStatus, useTopTenants, useBrokers, useEnvir
 import { MetricCard, ChartContainer, TimeSeriesChart, SimpleBarChart } from "@/components/shared";
 import { useAutoRefresh, formatLastRefresh } from "@/hooks/useAutoRefresh";
 import { cn } from "@/lib/utils";
+import { formatBytes } from "@/lib/format";
 import { useMemo, useState, useEffect, useRef } from "react";
 
 export default function DashboardPage() {
@@ -59,13 +60,6 @@ export default function DashboardPage() {
         return `${rate.toFixed(1)}/s`;
     };
 
-    const formatBytes = (bytes: number) => {
-        if (bytes >= 1099511627776) return `${(bytes / 1099511627776).toFixed(1)} TB`;
-        if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(1)} GB`;
-        if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
-        if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-        return `${bytes} B`;
-    };
 
     const HealthIcon = health?.overall === "healthy"
         ? CheckCircle
@@ -190,11 +184,28 @@ export default function DashboardPage() {
     // Broker chart data
     const brokerChartData = useMemo(() => {
         if (!brokers) return [];
-        return brokers.slice(0, 5).map((broker) => ({
-            name: broker.url.split(':').pop() || broker.url.slice(-8),
-            cpu: broker.cpu_usage || 0,
-            memory: broker.memory_usage || 0,
-        }));
+        return brokers.slice(0, 5).map((broker, index) => {
+            // Extract a meaningful broker name from the URL
+            // URL format: pulsar-broker-0.pulsar-broker.namespace.svc.cluster.local:8080
+            // or with protocol: http://broker-0.broker.pulsar.svc.cluster.local:8080
+            let name = `Broker ${index + 1}`;
+
+            // Remove protocol if present, then get hostname
+            const urlWithoutProtocol = broker.url.replace(/^https?:\/\//, '');
+            // Remove port if present
+            const hostname = urlWithoutProtocol.split(':')[0];
+            // Get first part of hostname (e.g., "pulsar-broker-0" from "pulsar-broker-0.pulsar-broker...")
+            const hostParts = hostname.split('.');
+            if (hostParts[0]) {
+                name = hostParts[0];
+            }
+
+            return {
+                name,
+                cpu: broker.cpu_usage || 0,
+                memory: broker.memory_usage || 0,
+            };
+        });
     }, [brokers]);
 
     const isLoading = statsLoading || healthLoading;

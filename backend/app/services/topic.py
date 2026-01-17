@@ -1,5 +1,6 @@
 """Topic service for managing Pulsar topics."""
 
+import asyncio
 import re
 from typing import Any
 
@@ -72,6 +73,67 @@ class TopicService:
             }
         return {"name": full_name, "persistent": True}
 
+    async def _fetch_topic_stats(self, full_name: str) -> dict[str, Any]:
+        """Fetch stats for a single topic with error handling.
+
+        Returns a dict with full_name and stats, or empty stats on failure.
+        """
+        try:
+            live_stats = await self.pulsar.get_topic_stats(full_name)
+            return {
+                "full_name": full_name,
+                "producer_count": len(live_stats.get("publishers", [])),
+                "subscription_count": len(live_stats.get("subscriptions", {})),
+            }
+        except Exception as e:
+            logger.debug(
+                "Failed to fetch stats for topic",
+                topic=full_name,
+                error=str(e),
+            )
+            return {
+                "full_name": full_name,
+                "producer_count": 0,
+                "subscription_count": 0,
+            }
+
+    async def _fetch_topic_stats_batch(
+        self,
+        topic_names: list[str],
+        batch_size: int = 50,
+    ) -> dict[str, dict[str, Any]]:
+        """Fetch stats for multiple topics in parallel batches.
+
+        Args:
+            topic_names: List of full topic names to fetch stats for.
+            batch_size: Maximum number of concurrent requests per batch.
+
+        Returns:
+            Dict mapping full_name to stats dict.
+        """
+        all_stats: dict[str, dict[str, Any]] = {}
+
+        # Process in batches to avoid overwhelming the Pulsar API
+        for i in range(0, len(topic_names), batch_size):
+            batch = topic_names[i:i + batch_size]
+
+            # Fetch all stats in this batch concurrently
+            tasks = [self._fetch_topic_stats(name) for name in batch]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for result in results:
+                if isinstance(result, Exception):
+                    # This shouldn't happen since _fetch_topic_stats handles exceptions,
+                    # but handle it defensively
+                    logger.warning(
+                        "Unexpected error in batch stats fetch",
+                        error=str(result),
+                    )
+                    continue
+                all_stats[result["full_name"]] = result
+
+        return all_stats
+
     async def get_topics(
         self,
         tenant: str,
@@ -90,22 +152,32 @@ class TopicService:
         # Fetch from Pulsar
         topic_names = await self.pulsar.get_topics(tenant, namespace, persistent)
 
+        # Fetch all topic stats in parallel batches
+        stats_map = await self._fetch_topic_stats_batch(topic_names)
+
         topics = []
         for full_name in topic_names:
             parsed = self.parse_topic_name(full_name)
-
-            # Get stats from DB if available
             topic_name = parsed.get("name", full_name)
-            stats = await self.stats_repo.get_latest_by_topic(tenant, namespace, topic_name)
+
+            # Get live stats from pre-fetched map
+            live_stats = stats_map.get(full_name, {})
+            producer_count = live_stats.get("producer_count", 0)
+            subscription_count = live_stats.get("subscription_count", 0)
+
+            # Get cached stats from DB for other metrics
+            stats = await self.stats_repo.get_latest_by_topic(
+                tenant, namespace, topic_name
+            )
 
             topic_data = {
                 "tenant": tenant,
                 "namespace": namespace,
-                "name": parsed.get("name", full_name),
+                "name": topic_name,
                 "full_name": full_name,
                 "persistent": parsed.get("persistent", persistent),
-                "producer_count": stats.producer_count if stats else 0,
-                "subscription_count": stats.subscription_count if stats else 0,
+                "producer_count": producer_count,
+                "subscription_count": subscription_count,
                 "msg_rate_in": stats.msg_rate_in if stats else 0,
                 "msg_rate_out": stats.msg_rate_out if stats else 0,
                 "msg_throughput_in": stats.msg_throughput_in if stats else 0,
@@ -138,8 +210,11 @@ class TopicService:
         except NotFoundError:
             raise NotFoundError("topic", full_name)
 
-        # Get internal stats (not yet implemented, return empty)
-        internal_stats = {}
+        # Get internal stats
+        try:
+            internal_stats = await self.pulsar.get_topic_internal_stats(full_name)
+        except Exception:
+            internal_stats = {}
 
         # Get subscriptions
         subscriptions = []
@@ -391,6 +466,22 @@ class TopicService:
         await self.pulsar.offload_topic(tenant, namespace, topic, persistent)
         logger.info(
             "Topic offload triggered",
+            tenant=tenant,
+            namespace=namespace,
+            topic=topic,
+        )
+
+    async def truncate_topic(
+        self,
+        tenant: str,
+        namespace: str,
+        topic: str,
+        persistent: bool = True,
+    ) -> None:
+        """Truncate a topic (delete all messages)."""
+        await self.pulsar.truncate_topic(tenant, namespace, topic, persistent)
+        logger.info(
+            "Topic truncated",
             tenant=tenant,
             namespace=namespace,
             topic=topic,
