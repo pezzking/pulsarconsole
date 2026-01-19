@@ -56,6 +56,7 @@ pulsar-conf/private.key
 
 # Local dev directories
 _local/
+temp2/
 
 # Test coverage
 coverage/
