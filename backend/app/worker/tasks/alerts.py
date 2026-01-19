@@ -3,7 +3,7 @@
 import asyncio
 from celery import shared_task
 
-from app.core.database import async_session_factory
+from app.core.database import worker_session_factory
 from app.core.logging import get_logger
 from app.services.environment import EnvironmentService
 from app.services.notification import NotificationService
@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 async def _check_consumer_disconnects() -> int:
     """Check for subscriptions with no consumers."""
     count = 0
-    async with async_session_factory() as session:
+    async with worker_session_factory() as session:
         try:
             env_service = EnvironmentService(session)
             pulsar = await env_service.get_pulsar_client()
@@ -95,7 +95,7 @@ async def _check_consumer_disconnects() -> int:
 async def _check_broker_health() -> int:
     """Check broker health status."""
     count = 0
-    async with async_session_factory() as session:
+    async with worker_session_factory() as session:
         try:
             env_service = EnvironmentService(session)
             pulsar = await env_service.get_pulsar_client()
@@ -143,7 +143,7 @@ async def _check_broker_health() -> int:
 async def _check_storage_warnings() -> int:
     """Check for topics with high storage usage."""
     count = 0
-    async with async_session_factory() as session:
+    async with worker_session_factory() as session:
         try:
             env_service = EnvironmentService(session)
             pulsar = await env_service.get_pulsar_client()
@@ -251,7 +251,7 @@ def cleanup_old_notifications(days: int = 30) -> int:
 
     try:
         async def _cleanup():
-            async with async_session_factory() as session:
+            async with worker_session_factory() as session:
                 notification_service = NotificationService(session)
                 count = await notification_service.cleanup_old_notifications(days)
                 await session.commit()

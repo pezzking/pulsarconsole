@@ -9,6 +9,7 @@ from app.api.v1 import (
     environment,
     messages,
     namespaces,
+    notification_channels,
     notifications,
     pulsar_auth,
     rbac,
@@ -36,5 +37,6 @@ router.include_router(messages.router)
 router.include_router(brokers.router)
 router.include_router(audit.router)
 router.include_router(notifications.router)
+router.include_router(notification_channels.router)
 router.include_router(pulsar_auth.router)
 router.include_router(search.router)
