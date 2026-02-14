@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_call:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.2.0)'
+        required: false
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -32,6 +37,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve version tags
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            TAG="${{ inputs.version }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          # e.g., v1.2.0
+          echo "full=$TAG" >> "$GITHUB_OUTPUT"
+          # e.g., v1.2
+          MINOR=$(echo "$TAG" | sed 's/\.[0-9]*$//')
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata for Backend
         id: meta
         uses: docker/metadata-action@v5
@@ -40,8 +59,8 @@ jobs:
           tags: |
             type=raw,value=latest
             type=sha,prefix=
-            type=semver,pattern=v{{version}}
-            type=semver,pattern=v{{major}}.{{minor}}
+            type=raw,value=${{ steps.version.outputs.full }}
+            type=raw,value=${{ steps.version.outputs.minor }}
 
       - name: Build and push Backend image
         uses: docker/build-push-action@v5
@@ -74,6 +93,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve version tags
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            TAG="${{ inputs.version }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "full=$TAG" >> "$GITHUB_OUTPUT"
+          MINOR=$(echo "$TAG" | sed 's/\.[0-9]*$//')
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata for Frontend
         id: meta
         uses: docker/metadata-action@v5
@@ -82,8 +113,8 @@ jobs:
           tags: |
             type=raw,value=latest
             type=sha,prefix=
-            type=semver,pattern=v{{version}}
-            type=semver,pattern=v{{major}}.{{minor}}
+            type=raw,value=${{ steps.version.outputs.full }}
+            type=raw,value=${{ steps.version.outputs.minor }}
 
       - name: Build and push Frontend image
         uses: docker/build-push-action@v5
