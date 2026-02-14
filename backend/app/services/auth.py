@@ -164,6 +164,8 @@ class AuthService:
                 issuer_url=settings.oidc_issuer_url,
                 client_id=settings.oidc_client_id,
                 client_secret=settings.oidc_client_secret,
+                scopes=settings.oidc_scopes_list,
+                role_claim=settings.oidc_role_claim,
                 use_pkce=settings.oidc_use_pkce,
             )
 

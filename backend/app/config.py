@@ -115,6 +115,9 @@ class Settings(BaseSettings):
     oidc_client_id: str | None = Field(default=None)
     oidc_client_secret: str | None = Field(default=None)  # Optional when using PKCE
     oidc_use_pkce: bool = Field(default=True)  # Use PKCE by default (recommended)
+    # Comma-separated OIDC scopes (default: "openid,profile,email")
+    # Add "groups" when using group-based role mapping
+    oidc_scopes: str | None = Field(default=None)
 
     # OIDC Group Mapping (Global defaults)
     # Claim name in OIDC token containing user groups (e.g., "groups", "roles")
@@ -192,6 +195,18 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """Check if running in production mode."""
         return self.app_env == "production"
+
+    @computed_field
+    @property
+    def oidc_scopes_list(self) -> list[str]:
+        """Parse OIDC scopes from comma-separated string, with smart defaults."""
+        if self.oidc_scopes:
+            return [s.strip() for s in self.oidc_scopes.split(",") if s.strip()]
+        # Default scopes — auto-include "groups" when group mappings or admin groups are configured
+        scopes = ["openid", "profile", "email"]
+        if self.oidc_admin_groups or self.oidc_group_role_mappings:
+            scopes.append("groups")
+        return scopes
 
     @computed_field
     @property
