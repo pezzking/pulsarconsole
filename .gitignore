@@ -48,7 +48,8 @@ backend/.env
 backend/*.db
 
 #claude
-.claude
+settings.local.json
+upstream.md
 
 # Pulsar OAuth credentials (contains secrets)
 pulsar-conf/credentials.json
