@@ -47,6 +47,9 @@ ENV/
 backend/.env
 backend/*.db
 
+#claude
+.claude
+
 # Pulsar OAuth credentials (contains secrets)
 pulsar-conf/credentials.json
 pulsar-conf/zitadel-key.json
